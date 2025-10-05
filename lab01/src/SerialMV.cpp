@@ -60,13 +60,23 @@ void PrintVector (double* pVector, int Size) {
     printf("\n");
 }
 
+// Function for computational process termination
+void ProcessTermination(double* pMatrix,double* pVector,double* pResult) {
+    delete [] pMatrix;
+    delete [] pVector;
+    delete [] pResult;
+}
+
 int main() {
     // Memory allocation and data initialization
     ProcessInitialization(pMatrix, pVector, pResult, Size);
+
     // Matrix and vector output
     printf ("Initial Matrix: \n");
     PrintMatrix (pMatrix, Size, Size);
     printf ("Initial Vector: \n");
     PrintVector (pVector, Size);
-    return 0;
+
+    // Computational process termination
+    ProcessTermination(pMatrix, pVector, pResult);
 }
