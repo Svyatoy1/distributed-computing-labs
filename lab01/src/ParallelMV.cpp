@@ -5,9 +5,8 @@
 #include <mpi.h>
 using namespace std;
 
-int ProcNum, ProcRank; // Кількість процесів і ранг поточного процесу
+int ProcNum, ProcRank;
 
-// --- 1. Ініціалізація тестових даних ---
 void DummyDataInitialization(double* pMatrix, double* pVector, int Size) {
     for (int i = 0; i < Size; ++i) {
         pVector[i] = 1.0;
@@ -16,7 +15,6 @@ void DummyDataInitialization(double* pMatrix, double* pVector, int Size) {
     }
 }
 
-// --- 2. Форматований вивід матриці ---
 void PrintMatrix(double* pMatrix, int RowCount, int ColCount) {
     for (int i = 0; i < RowCount; i++) {
         for (int j = 0; j < ColCount; j++)
@@ -25,14 +23,12 @@ void PrintMatrix(double* pMatrix, int RowCount, int ColCount) {
     }
 }
 
-// --- 3. Форматований вивід вектора ---
 void PrintVector(double* pVector, int Size) {
     for (int i = 0; i < Size; i++)
         printf("%7.4f ", pVector[i]);
     printf("\n");
 }
 
-// --- 4. Ініціалізація даних ---
 void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
     double*& pProcRows, double*& pProcResult, int& Size, int& RowNum) {
     
@@ -67,7 +63,6 @@ void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
     }
 }
 
-// --- 5. Розподіл даних між процесами ---
 void DataDistribution(double* pMatrix, double* pProcRows, double* pVector,
     int Size, int RowNum) {
     
@@ -76,7 +71,6 @@ void DataDistribution(double* pMatrix, double* pProcRows, double* pVector,
         RowNum * Size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }
 
-// --- 6. Тестування розподілу даних ---
 void TestDistribution(double* pMatrix, double* pVector, double* pProcRows, int Size, int RowNum) {
     if (ProcRank == 0) {
         cout << "\nInitial Matrix (on root process):\n";
@@ -99,7 +93,6 @@ void TestDistribution(double* pMatrix, double* pVector, double* pProcRows, int S
     }
 }
 
-// --- 7. Завершення процесу ---
 void ProcessTermination(double* pMatrix, double* pVector, double* pResult,
     double* pProcRows, double* pProcResult) {
     if (ProcRank == 0) {
@@ -111,7 +104,6 @@ void ProcessTermination(double* pMatrix, double* pVector, double* pResult,
     delete[] pProcResult;
 }
 
-// --- 8. Основна функція ---
 int main(int argc, char* argv[]) {
     double* pMatrix;
     double* pVector;
