@@ -7,6 +7,25 @@ using namespace std;
 
 int ProcNum, ProcRank; // Number of available processes, rank of current process
 
+void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult, int& Size) {
+    if (ProcRank == 0) {
+        do {
+            cout << "\nEnter size of the matrix and vector: ";
+            cin >> Size;
+
+            if (Size < ProcNum)
+                cout << "Size must be greater than number of processes!\n";
+            if (Size % ProcNum != 0)
+                cout << "Size must be divisible by number of processes!\n";
+
+        } while (Size < ProcNum || Size % ProcNum != 0);
+
+        cout << "Chosen size = " << Size << "\n";
+    }
+
+    MPI_Bcast(&Size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
 int main(int argc, char* argv[]) {
     double* pMatrix; // First argument - initial matrix
     double* pVector; // Second argument - initial vector
@@ -18,12 +37,12 @@ int main(int argc, char* argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &ProcNum); //getting number of available processes
     MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);  // getting rank of current process
 
-    if (ProcRank == 0) {
-        cout << "Parallel matrix-vector multiplication program" << endl;
-        cout << "Number of available processes = " << ProcNum << endl;
-    }
+    if (ProcRank == 0)
+        cout << "Parallel matrix-vector multiplication program\n";
 
-    cout << "Rank of current process = " << ProcRank << endl;
+    // Memory allocation and data initialization
+    ProcessInitialization(pMatrix, pVector, pResult, Size);
+    cout << "Process " << ProcRank << " received matrix of size " << Size << "\n";
 
     MPI_Finalize();
 }
