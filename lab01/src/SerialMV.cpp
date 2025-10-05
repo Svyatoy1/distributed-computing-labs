@@ -101,10 +101,13 @@ int main() {
     double duration;
 
     // Matrix and vector output
+    
+    /*
     printf ("Initial Matrix: \n");
     PrintMatrix (pMatrix, Size, Size);
     printf ("Initial Vector: \n");
     PrintVector (pVector, Size);
+    */
 
     // Matrix-vector multiplication
     start = clock();
@@ -113,8 +116,12 @@ int main() {
     duration = (finish-start)/double(CLOCKS_PER_SEC);
 
     // Printing the result vector
+
+    /*
     printf ("\nResult Vector: \n");
     PrintVector(pResult, Size);
+    */
+
     // Printing the time spent by matrix-vector multiplication
     printf("\nTime of execution: %f", duration);
 
