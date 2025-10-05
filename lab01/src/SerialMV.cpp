@@ -19,6 +19,19 @@ void DummyDataInitialization(double* pMatrix, double* pVector, int Size) {
     }
 }
 
+// Function for random setting of the matrix and vector elements
+void RandomDataInitialization (double* pMatrix,double* pVector,int Size) {
+    int i, j; // Loop variables
+    
+    srand(unsigned(clock()));
+    for (i=0; i<Size; i++) {
+        pVector[i] = rand()/double(1000);
+
+        for (j=0; j<Size; j++)
+            pMatrix[i*Size+j] = rand()/double(1000);
+    }
+}
+
 // Function for matrix-vector multiplication
 void ResultCalculation(double* pMatrix, double* pVector, double* pResult,int Size) {
     int i, j; // Loop variables
@@ -52,7 +65,8 @@ void ProcessInitialization(double* &pMatrix, double* &pVector, double* &pResult,
     pVector = new double [Size];
     pResult = new double [Size];
 
-    DummyDataInitialization(pMatrix, pVector, Size);
+    // Random definition of matrix and vector elements
+    RandomDataInitialization(pMatrix, pVector, Size);
 }
 
 // Function for formatted matrix output
@@ -83,6 +97,9 @@ int main() {
     // Memory allocation and data initialization
     ProcessInitialization(pMatrix, pVector, pResult, Size);
 
+    clock_t start, finish;
+    double duration;
+
     // Matrix and vector output
     printf ("Initial Matrix: \n");
     PrintMatrix (pMatrix, Size, Size);
@@ -90,11 +107,16 @@ int main() {
     PrintVector (pVector, Size);
 
     // Matrix-vector multiplication
-    ResultCalculation(pMatrix, pVector, pResult, Size);
-    
+    start = clock();
+    ResultCalculation (pMatrix, pVector, pResult, Size);
+    finish = clock();
+    duration = (finish-start)/double(CLOCKS_PER_SEC);
+
     // Printing the result vector
-    printf ("\n Result Vector: \n");
+    printf ("\nResult Vector: \n");
     PrintVector(pResult, Size);
+    // Printing the time spent by matrix-vector multiplication
+    printf("\nTime of execution: %f", duration);
 
     // Computational process termination
     ProcessTermination(pMatrix, pVector, pResult);

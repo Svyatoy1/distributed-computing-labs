@@ -18,3 +18,7 @@
 ## Task 5 - Implementation the Matrix-Vector Multiplication
 **Що зроблено:** реалізовано добуток `c = A * b` у функції `ResultCalculation(...)` (подвійний цикл i,j, row-major).
 **Перевірка:** для тестових даних (рядок i, вектор 1) маємо `c[i] = i * Size`. При Size=4 маємо результат `0 4 8 12`.
+
+## Task 6 - Carrying out the Computational Experiments
+**Що зроблено:** створено функцію `RandomDataInitialization(...)` для формування випадкових значень у матриці та векторі. Додано функції `clock_t`, `clock`, `CLOCKS_PER_SEC` з бібліотеки `ctime` для визначення часу реалізації функції.
+**Перевірка:** дійсно, при тестуванні програми використовуються випадкові числа.
