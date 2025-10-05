@@ -3,6 +3,10 @@ SerialMV
 *.out
 *.exe
 
+ParallelMV
+*.out
+*.exe
+
 # Об'єктні файли
 *.o
 
