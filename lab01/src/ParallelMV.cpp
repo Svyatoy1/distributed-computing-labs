@@ -121,6 +121,38 @@ void ResultReplication(double* pProcResult, double* pResult, int Size, int RowNu
     MPI_Allgather(pProcResult, RowNum, MPI_DOUBLE, pResult, RowNum, MPI_DOUBLE, MPI_COMM_WORLD);
 }
 
+void SerialResultCalculation(double* pMatrix, double* pVector, double* pResult,int Size) {
+    int i, j; // Loop variables
+
+    for (i=0; i<Size; i++) {
+        pResult[i] = 0;
+
+        for (j=0; j<Size; j++)
+            pResult[i] += pMatrix[i*Size+j]*pVector[j];
+    }
+}
+
+// Testing the result of parallel matrix-vector multiplication
+void TestResult(double* pMatrix, double* pVector, double* pResult, int Size) {
+    double* pSerialResult; // Result of serial matrix-vector multiplication
+    int equal = 0; // =0, if the serial and parallel results are identical
+    int i; // Loop variable
+
+    if (ProcRank == 0) {
+        pSerialResult = new double [Size];
+        SerialResultCalculation(pMatrix, pVector, pSerialResult, Size);
+        for (i=0; i<Size; i++) {
+            if (pResult[i] != pSerialResult[i])
+                equal = 1;
+        }
+        if (equal == 1)
+            cout << "The results of serial and parallel algorithms are NOT identical. Check your code." ;
+        else
+            cout << "The results of serial and parallel algorithms are identical." ;
+        delete [] pSerialResult;
+    }
+}
+
 void ProcessTermination(double* pMatrix, double* pVector, double* pResult,
     double* pProcRows, double* pProcResult) {
     if (ProcRank == 0) {
@@ -154,6 +186,7 @@ int main(int argc, char* argv[]) {
     ParallelResultCalculation(pProcRows, pVector, pProcResult, Size, RowNum);
     ResultReplication(pProcResult, pResult, Size, RowNum);
     TestPartialResults(pProcResult, RowNum);
+    TestResult(pMatrix, pVector, pResult, Size);
     ProcessTermination(pMatrix, pVector, pResult, pProcRows, pProcResult);
 
     MPI_Finalize();
