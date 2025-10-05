@@ -19,6 +19,18 @@ void DummyDataInitialization(double* pMatrix, double* pVector, int Size) {
     }
 }
 
+// Function for matrix-vector multiplication
+void ResultCalculation(double* pMatrix, double* pVector, double* pResult,int Size) {
+    int i, j; // Loop variables
+
+    for (i=0; i<Size; i++) {
+        pResult[i] = 0;
+
+        for (j=0; j<Size; j++)
+            pResult[i] += pMatrix[i*Size+j]*pVector[j];
+    }
+}
+
 // Function for memory allocation and data initialization
 void ProcessInitialization(double* &pMatrix, double* &pVector, double* &pResult, int &Size) {
     do {
@@ -76,6 +88,13 @@ int main() {
     PrintMatrix (pMatrix, Size, Size);
     printf ("Initial Vector: \n");
     PrintVector (pVector, Size);
+
+    // Matrix-vector multiplication
+    ResultCalculation(pMatrix, pVector, pResult, Size);
+    
+    // Printing the result vector
+    printf ("\n Result Vector: \n");
+    PrintVector(pResult, Size);
 
     // Computational process termination
     ProcessTermination(pMatrix, pVector, pResult);
