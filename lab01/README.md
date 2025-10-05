@@ -4,5 +4,5 @@
 
 # Task 2 — ProcessInitialization: ввід Size із перевіркою
 **Додано:** функцію `ProcessInitialization(double*&, double*&, double*&, int&)`.
-**Логіка:** цикл 'do…while' запитує розмір доти, доки 'Size > 0'. Некоректний ввід чистимо через 'cin.clear()' + 'cin.ignore(...)'.
-**Вивід:** показує 'Chosen objects size = N'
+**Логіка:** цикл `do…while` запитує розмір доти, доки `Size > 0`. Некоректний ввід чистимо через `cin.clear()` + `cin.ignore(...)`.
+**Вивід:** показує `Chosen objects size = N`
