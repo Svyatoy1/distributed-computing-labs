@@ -39,3 +39,7 @@
 | 10    | 8,000       | 0.186502             |
 | 11    | 9,000       | 0.240879             |
 | 12    | 10,000      | 0.287437             |
+
+# EXERCISE 4
+## Task 1 - Open the New Project
+**Що зроблено:** створено нову програму `ParallelMV.cpp` й для тесту виведено повідомлення "Serial matrix-vector multiplication program"

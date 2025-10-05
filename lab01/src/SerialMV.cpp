@@ -78,6 +78,7 @@ void PrintMatrix (double* pMatrix, int RowCount, int ColCount) {
             printf("\n");
         }
     }
+    
 // Function for formatted vector output
 void PrintVector (double* pVector, int Size) {
     int i;
@@ -101,7 +102,7 @@ int main() {
     double duration;
 
     // Matrix and vector output
-    
+
     /*
     printf ("Initial Matrix: \n");
     PrintMatrix (pMatrix, Size, Size);
