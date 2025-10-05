@@ -68,6 +68,17 @@ void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
     }
 }
 
+// Function for computational process termination
+void ProcessTermination (double* pMatrix, double* pVector, double* pResult, double* pProcRows, double* pProcResult) {
+    if (ProcRank == 0) {
+        delete [] pMatrix;
+        delete [] pVector;
+        delete [] pResult;
+        delete [] pProcRows;
+        delete [] pProcResult;
+    }
+}
+
 int main(int argc, char* argv[]) {
     double* pMatrix; // First argument - initial matrix
     double* pVector; // Second argument - initial vector
@@ -86,6 +97,8 @@ int main(int argc, char* argv[]) {
         cout << "Parallel matrix-vector multiplication program\n";
 
     ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcResult, Size, RowNum);
+
+    ProcessTermination(pMatrix, pVector, pResult, pProcRows, pProcResult);
 
     MPI_Finalize();
 }
