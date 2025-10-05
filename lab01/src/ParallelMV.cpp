@@ -93,6 +93,29 @@ void TestDistribution(double* pMatrix, double* pVector, double* pProcRows, int S
     }
 }
 
+// Process rows and vector mulriplication
+void ParallelResultCalculation(double* pProcRows, double* pVector, double* pProcResult, int Size, int RowNum) {
+    int i, j;
+    for (i=0; i<RowNum; i++) {
+        pProcResult[i] = 0;
+        for (j=0; j<Size; j++) {
+            pProcResult[i] += pProcRows[i*Size+j]*pVector[j];
+        }
+    }
+}
+
+// Function for testing the multiplication result of matrix stripe and vector
+void TestPartialResults(double* pProcResult, int RowNum) {
+    for (int i = 0; i < ProcNum; i++) {
+        if (ProcRank == i) {
+            cout << "\nProcRank = " << ProcRank << endl;
+            cout << "Part of result vector:" << endl;
+            PrintVector(pProcResult, RowNum);
+        }
+        MPI_Barrier(MPI_COMM_WORLD); // Synchronize processes before next output
+    }
+}
+
 void ProcessTermination(double* pMatrix, double* pVector, double* pResult,
     double* pProcRows, double* pProcResult) {
     if (ProcRank == 0) {
@@ -123,6 +146,8 @@ int main(int argc, char* argv[]) {
     ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcResult, Size, RowNum);
     DataDistribution(pMatrix, pProcRows, pVector, Size, RowNum);
     TestDistribution(pMatrix, pVector, pProcRows, Size, RowNum);
+    ParallelResultCalculation(pProcRows, pVector, pProcResult, Size, RowNum);
+    TestPartialResults(pProcResult, RowNum);
     ProcessTermination(pMatrix, pVector, pResult, pProcRows, pProcResult);
 
     MPI_Finalize();
