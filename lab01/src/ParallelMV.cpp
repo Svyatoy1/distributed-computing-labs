@@ -5,9 +5,9 @@
 #include <mpi.h>
 using namespace std;
 
-int ProcNum, ProcRank; // Number of available processes, rank of current process
+int ProcNum, ProcRank; // Кількість процесів і ранг поточного процесу
 
-// Function for simple definition of matrix and vector elements
+// --- 1. Ініціалізація тестових даних ---
 void DummyDataInitialization(double* pMatrix, double* pVector, int Size) {
     for (int i = 0; i < Size; ++i) {
         pVector[i] = 1.0;
@@ -16,26 +16,26 @@ void DummyDataInitialization(double* pMatrix, double* pVector, int Size) {
     }
 }
 
-// Function for formatted matrix output
-void PrintMatrix (double* pMatrix, int RowCount, int ColCount) {
-    int i, j; // Loop variables
-        for (i=0; i<RowCount; i++) {
-            for (j=0; j<ColCount; j++)
-            printf("%7.4f ", pMatrix[i*ColCount+j]);
-            printf("\n");
-        }
+// --- 2. Форматований вивід матриці ---
+void PrintMatrix(double* pMatrix, int RowCount, int ColCount) {
+    for (int i = 0; i < RowCount; i++) {
+        for (int j = 0; j < ColCount; j++)
+            printf("%7.4f ", pMatrix[i * ColCount + j]);
+        printf("\n");
     }
-    
-// Function for formatted vector output
-void PrintVector (double* pVector, int Size) {
-    int i;
-    for (i=0; i<Size; i++)
-    printf("%7.4f ", pVector[i]);
+}
+
+// --- 3. Форматований вивід вектора ---
+void PrintVector(double* pVector, int Size) {
+    for (int i = 0; i < Size; i++)
+        printf("%7.4f ", pVector[i]);
     printf("\n");
 }
 
-void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult, 
+// --- 4. Ініціалізація даних ---
+void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
     double*& pProcRows, double*& pProcResult, int& Size, int& RowNum) {
+    
     if (ProcRank == 0) {
         do {
             cout << "\nEnter size of the matrix and vector: ";
@@ -48,7 +48,6 @@ void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
     }
 
     MPI_Bcast(&Size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
     RowNum = Size / ProcNum;
 
     pVector = new double[Size];
@@ -68,37 +67,72 @@ void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
     }
 }
 
-// Function for computational process termination
-void ProcessTermination (double* pMatrix, double* pVector, double* pResult, double* pProcRows, double* pProcResult) {
+// --- 5. Розподіл даних між процесами ---
+void DataDistribution(double* pMatrix, double* pProcRows, double* pVector,
+    int Size, int RowNum) {
+    
+    MPI_Bcast(pVector, Size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Scatter(pMatrix, RowNum * Size, MPI_DOUBLE, pProcRows,
+        RowNum * Size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+}
+
+// --- 6. Тестування розподілу даних ---
+void TestDistribution(double* pMatrix, double* pVector, double* pProcRows, int Size, int RowNum) {
     if (ProcRank == 0) {
-        delete [] pMatrix;
-        delete [] pVector;
-        delete [] pResult;
-        delete [] pProcRows;
-        delete [] pProcResult;
+        cout << "\nInitial Matrix (on root process):\n";
+        PrintMatrix(pMatrix, Size, Size);
+        cout << "\nInitial Vector:\n";
+        PrintVector(pVector, Size);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    for (int i = 0; i < ProcNum; i++) {
+        if (ProcRank == i) {
+            cout << "\nProcRank = " << ProcRank << endl;
+            cout << "Matrix Stripe:\n";
+            PrintMatrix(pProcRows, RowNum, Size);
+            cout << "Vector:\n";
+            PrintVector(pVector, Size);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
     }
 }
 
+// --- 7. Завершення процесу ---
+void ProcessTermination(double* pMatrix, double* pVector, double* pResult,
+    double* pProcRows, double* pProcResult) {
+    if (ProcRank == 0) {
+        delete[] pMatrix;
+    }
+    delete[] pVector;
+    delete[] pResult;
+    delete[] pProcRows;
+    delete[] pProcResult;
+}
+
+// --- 8. Основна функція ---
 int main(int argc, char* argv[]) {
-    double* pMatrix; // First argument - initial matrix
-    double* pVector; // Second argument - initial vector
-    double* pResult; // Result vector for matrix-vector multiplication
+    double* pMatrix;
+    double* pVector;
+    double* pResult;
     double* pProcRows;
     double* pProcResult;
-    int Size; // Sizes of initial matrix and vector
-    int RowNum;
+    int Size, RowNum;
     double Start, Finish, Duration;
-    
-    MPI_Init(&argc, &argv); // initialization of MPI envoriment
-    MPI_Comm_size(MPI_COMM_WORLD, &ProcNum); //getting number of available processes
-    MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);  // getting rank of current process
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &ProcNum);
+    MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);
 
     if (ProcRank == 0)
         cout << "Parallel matrix-vector multiplication program\n";
 
     ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcResult, Size, RowNum);
-
+    DataDistribution(pMatrix, pProcRows, pVector, Size, RowNum);
+    TestDistribution(pMatrix, pVector, pProcRows, Size, RowNum);
     ProcessTermination(pMatrix, pVector, pResult, pProcRows, pProcResult);
 
     MPI_Finalize();
+    return 0;
 }
