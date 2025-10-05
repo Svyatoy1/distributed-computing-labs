@@ -116,6 +116,11 @@ void TestPartialResults(double* pProcResult, int RowNum) {
     }
 }
 
+// Function for result vector replication
+void ResultReplication(double* pProcResult, double* pResult, int Size, int RowNum) {
+    MPI_Allgather(pProcResult, RowNum, MPI_DOUBLE, pResult, RowNum, MPI_DOUBLE, MPI_COMM_WORLD);
+}
+
 void ProcessTermination(double* pMatrix, double* pVector, double* pResult,
     double* pProcRows, double* pProcResult) {
     if (ProcRank == 0) {
@@ -147,6 +152,7 @@ int main(int argc, char* argv[]) {
     DataDistribution(pMatrix, pProcRows, pVector, Size, RowNum);
     TestDistribution(pMatrix, pVector, pProcRows, Size, RowNum);
     ParallelResultCalculation(pProcRows, pVector, pProcResult, Size, RowNum);
+    ResultReplication(pProcResult, pResult, Size, RowNum);
     TestPartialResults(pProcResult, RowNum);
     ProcessTermination(pMatrix, pVector, pResult, pProcRows, pProcResult);
 
