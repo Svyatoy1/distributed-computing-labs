@@ -7,12 +7,13 @@ using namespace std;
 
 int ProcNum, ProcRank;
 
-void DummyDataInitialization(double* pMatrix, double* pVector, int Size) {
-    for (int i = 0; i < Size; ++i) {
-        pVector[i] = 1.0;
-        for (int j = 0; j < Size; ++j)
-            pMatrix[i * Size + j] = static_cast<double>(i);
+void DummyDataInitialization(double* pMatrix, double* pVector, int Rows, int Cols) {
+    for (int i = 0; i < Rows; i++) {
+        for (int j = 0; j < Cols; j++)
+            pMatrix[i * Cols + j] = static_cast<double>(i + 1);
     }
+    for (int j = 0; j < Cols; j++)
+        pVector[j] = 1.0;
 }
 
 void PrintMatrix(double* pMatrix, int RowCount, int ColCount) {
@@ -30,45 +31,44 @@ void PrintVector(double* pVector, int Size) {
 }
 
 void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
-    double*& pProcRows, double*& pProcResult, int& Size, int& RowNum) {
-    
+                           double*& pProcRows, double*& pProcResult,
+                           int& Rows, int& Cols, int& RowNum) {
     if (ProcRank == 0) {
         do {
-            cout << "\nEnter size of the matrix and vector: ";
-            cin >> Size;
-            if (Size < ProcNum)
-                cout << "Size must be greater than number of processes!\n";
-            if (Size % ProcNum != 0)
-                cout << "Size must be divisible by number of processes!\n";
-        } while (Size < ProcNum || Size % ProcNum != 0);
+            cout << "\nEnter number of rows: ";
+            cin >> Rows;
+            cout << "Enter number of columns: ";
+            cin >> Cols;
+            if (Rows < ProcNum)
+                cout << "Rows must be greater than number of processes!\n";
+        } while (Rows < ProcNum);
     }
 
-    MPI_Bcast(&Size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    RowNum = Size / ProcNum;
+    MPI_Bcast(&Rows, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&Cols, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    pVector = new double[Size];
-    pResult = new double[Size];
-    pProcRows = new double[RowNum * Size];
+    RowNum = Rows / ProcNum;
+
+    pVector = new double[Cols];
+    pResult = new double[Rows];
+    pProcRows = new double[RowNum * Cols];
     pProcResult = new double[RowNum];
 
     if (ProcRank == 0) {
-        pMatrix = new double[Size * Size];
-        DummyDataInitialization(pMatrix, pVector, Size);
+        pMatrix = new double[Rows * Cols];
+        DummyDataInitialization(pMatrix, pVector, Rows, Cols);
 
+        cout << "\nMatrix size: " << Rows << "x" << Cols << endl;
         cout << "\nInitial Matrix (on root process):\n";
-        PrintMatrix(pMatrix, Size, Size);
-
+        PrintMatrix(pMatrix, Rows, Cols);
         cout << "\nInitial Vector:\n";
-        PrintVector(pVector, Size);
+        PrintVector(pVector, Cols);
     }
 }
 
-void DataDistribution(double* pMatrix, double* pProcRows, double* pVector,
-    int Size, int RowNum) {
-    
-    MPI_Bcast(pVector, Size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Scatter(pMatrix, RowNum * Size, MPI_DOUBLE, pProcRows,
-        RowNum * Size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+void DataDistribution(double* pMatrix, double* pProcRows, double* pVector, int Rows, int Cols, int RowNum) {
+    MPI_Bcast(pVector, Cols, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Scatter(pMatrix, RowNum * Cols, MPI_DOUBLE, pProcRows, RowNum * Cols, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }
 
 void TestDistribution(double* pMatrix, double* pVector, double* pProcRows, int Size, int RowNum) {
@@ -94,13 +94,11 @@ void TestDistribution(double* pMatrix, double* pVector, double* pProcRows, int S
 }
 
 // Process rows and vector mulriplication
-void ParallelResultCalculation(double* pProcRows, double* pVector, double* pProcResult, int Size, int RowNum) {
-    int i, j;
-    for (i=0; i<RowNum; i++) {
-        pProcResult[i] = 0;
-        for (j=0; j<Size; j++) {
-            pProcResult[i] += pProcRows[i*Size+j]*pVector[j];
-        }
+void ParallelResultCalculation(double* pProcRows, double* pVector, double* pProcResult, int Rows, int Cols, int RowNum) {
+    for (int i = 0; i < RowNum; i++) {
+        pProcResult[i] = 0.0;
+        for (int j = 0; j < Cols; j++)
+            pProcResult[i] += pProcRows[i * Cols + j] * pVector[j];
     }
 }
 
@@ -117,8 +115,8 @@ void TestPartialResults(double* pProcResult, int RowNum) {
 }
 
 // Function for result vector replication
-void ResultReplication(double* pProcResult, double* pResult, int Size, int RowNum) {
-    MPI_Allgather(pProcResult, RowNum, MPI_DOUBLE, pResult, RowNum, MPI_DOUBLE, MPI_COMM_WORLD);
+void ResultReplication(double* pProcResult, double* pResult, int Rows, int RowNum) {
+    MPI_Gather(pProcResult, RowNum, MPI_DOUBLE, pResult, RowNum, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }
 
 void SerialResultCalculation(double* pMatrix, double* pVector, double* pResult,int Size) {
@@ -170,7 +168,7 @@ int main(int argc, char* argv[]) {
     double* pResult;
     double* pProcRows;
     double* pProcResult;
-    int Size, RowNum;
+    int Rows, Cols, RowNum;
     double Start, Finish, Duration;
 
     MPI_Init(&argc, &argv);
@@ -178,17 +176,24 @@ int main(int argc, char* argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);
 
     if (ProcRank == 0)
-        cout << "Parallel matrix-vector multiplication program\n";
+        cout << "Parallel matrix-vector multiplication program (rectangular)\n";
 
-    ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcResult, Size, RowNum);
-    DataDistribution(pMatrix, pProcRows, pVector, Size, RowNum);
-    TestDistribution(pMatrix, pVector, pProcRows, Size, RowNum);
-    ParallelResultCalculation(pProcRows, pVector, pProcResult, Size, RowNum);
-    ResultReplication(pProcResult, pResult, Size, RowNum);
-    TestPartialResults(pProcResult, RowNum);
-    TestResult(pMatrix, pVector, pResult, Size);
+    ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcResult, Rows, Cols, RowNum);
+    DataDistribution(pMatrix, pProcRows, pVector, Rows, Cols, RowNum);
+
+    Start = MPI_Wtime();
+    ParallelResultCalculation(pProcRows, pVector, pProcResult, Rows, Cols, RowNum);
+    ResultReplication(pProcResult, pResult, Rows, RowNum);
+    Finish = MPI_Wtime();
+    Duration = Finish - Start;
+
+    if (ProcRank == 0) {
+        cout << "\nFinal Result Vector:\n";
+        PrintVector(pResult, Rows);
+        cout << "\nExecution time: " << Duration << " sec\n";
+    }
+
     ProcessTermination(pMatrix, pVector, pResult, pProcRows, pProcResult);
-
     MPI_Finalize();
     return 0;
 }
