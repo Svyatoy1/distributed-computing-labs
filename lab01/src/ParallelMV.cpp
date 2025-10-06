@@ -3,16 +3,18 @@
 #include <stdio.h>
 #include <time.h>
 #include <mpi.h>
+#include <cmath>
 using namespace std;
 
 int ProcNum, ProcRank;
 
 void DummyDataInitialization(double* pMatrix, double* pVector, int Rows, int Cols) {
-    for (int i = 0; i < Rows; i++) {
-        for (int j = 0; j < Cols; j++)
-            pMatrix[i * Cols + j] = static_cast<double>(i + 1);
+    for (int i = 0; i < Rows; ++i) {
+    for (int j = 0; j < Cols; ++j)
+        pMatrix[i * Cols + j] = static_cast<double>(i + 1);
     }
-    for (int j = 0; j < Cols; j++)
+
+    for (int j = 0; j < Cols; ++j)
         pVector[j] = 1.0;
 }
 
@@ -31,8 +33,7 @@ void PrintVector(double* pVector, int Size) {
 }
 
 void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
-                           double*& pProcRows, double*& pProcResult,
-                           int& Rows, int& Cols, int& RowNum) {
+    double*& pProcRows, double*& pProcResult, int& Rows, int& Cols, int& RowNum) {
     if (ProcRank == 0) {
         do {
             cout << "\nEnter number of rows: ";
@@ -57,7 +58,6 @@ void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
     if (ProcRank == 0) {
         pMatrix = new double[Rows * Cols];
         DummyDataInitialization(pMatrix, pVector, Rows, Cols);
-
         cout << "\nMatrix size: " << Rows << "x" << Cols << endl;
         cout << "\nInitial Matrix (on root process):\n";
         PrintMatrix(pMatrix, Rows, Cols);
@@ -68,7 +68,7 @@ void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
 
 void DataDistribution(double* pMatrix, double* pProcRows, double* pVector, int Rows, int Cols, int RowNum) {
     MPI_Bcast(pVector, Cols, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Scatter(pMatrix, RowNum * Cols, MPI_DOUBLE, pProcRows, RowNum * Cols, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Scatter(pMatrix, RowNum*Cols, MPI_DOUBLE, pProcRows, RowNum*Cols, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }
 
 void TestDistribution(double* pMatrix, double* pVector, double* pProcRows, int Size, int RowNum) {
@@ -131,23 +131,35 @@ void SerialResultCalculation(double* pMatrix, double* pVector, double* pResult,i
 }
 
 // Testing the result of parallel matrix-vector multiplication
-void TestResult(double* pMatrix, double* pVector, double* pResult, int Size) {
-    double* pSerialResult; // Result of serial matrix-vector multiplication
-    int equal = 0; // =0, if the serial and parallel results are identical
-    int i; // Loop variable
+void TestResult(double* pMatrix, double* pVector, double* pResult, int Rows, int Cols) {
+    double* pSerialResult;    // Result of serial matrix-vector multiplication
+    int equal = 0;            // =0 if the serial and parallel results are identical
+    int i;                    // Loop variable
 
     if (ProcRank == 0) {
-        pSerialResult = new double [Size];
-        SerialResultCalculation(pMatrix, pVector, pSerialResult, Size);
-        for (i=0; i<Size; i++) {
-            if (pResult[i] != pSerialResult[i])
-                equal = 1;
+        pSerialResult = new double[Rows]; // one value per row of the matrix
+
+        // Perform serial matrix-vector multiplication
+        for (i = 0; i < Rows; i++) {
+            pSerialResult[i] = 0.0;
+            for (int j = 0; j < Cols; j++)
+                pSerialResult[i] += pMatrix[i * Cols + j] * pVector[j];
         }
+
+        // Compare serial and parallel results
+        for (i = 0; i < Rows; i++) {
+            if (fabs(pResult[i] - pSerialResult[i]) > 1e-6) { // allow floating-point tolerance
+                equal = 1;
+                break;
+            }
+        }
+
         if (equal == 1)
-            cout << "The results of serial and parallel algorithms are NOT identical. Check your code." ;
+            cout << "The results of serial and parallel algorithms are NOT identical. Check your code." << endl;
         else
-            cout << "The results of serial and parallel algorithms are identical." ;
-        delete [] pSerialResult;
+            cout << "The results of serial and parallel algorithms are identical." << endl;
+
+        delete[] pSerialResult;
     }
 }
 
@@ -179,18 +191,16 @@ int main(int argc, char* argv[]) {
         cout << "Parallel matrix-vector multiplication program (rectangular)\n";
 
     ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcResult, Rows, Cols, RowNum);
-    DataDistribution(pMatrix, pProcRows, pVector, Rows, Cols, RowNum);
-
     Start = MPI_Wtime();
+    DataDistribution(pMatrix, pProcRows, pVector, Rows, Cols, RowNum);
     ParallelResultCalculation(pProcRows, pVector, pProcResult, Rows, Cols, RowNum);
     ResultReplication(pProcResult, pResult, Rows, RowNum);
     Finish = MPI_Wtime();
     Duration = Finish - Start;
 
+    TestResult(pMatrix, pVector, pResult, Rows, Cols);
     if (ProcRank == 0) {
-        cout << "\nFinal Result Vector:\n";
-        PrintVector(pResult, Rows);
-        cout << "\nExecution time: " << Duration << " sec\n";
+        cout << "Time of execution" << Duration << endl;
     }
 
     ProcessTermination(pMatrix, pVector, pResult, pProcRows, pProcResult);
