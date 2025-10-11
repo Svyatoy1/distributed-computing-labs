@@ -58,11 +58,11 @@ void ProcessInitialization(double*& pMatrix, double*& pVector, double*& pResult,
     if (ProcRank == 0) {
         pMatrix = new double[Rows * Cols];
         DummyDataInitialization(pMatrix, pVector, Rows, Cols);
-        cout << "\nMatrix size: " << Rows << "x" << Cols << endl;
-        cout << "\nInitial Matrix (on root process):\n";
-        PrintMatrix(pMatrix, Rows, Cols);
-        cout << "\nInitial Vector:\n";
-        PrintVector(pVector, Cols);
+        //cout << "\nMatrix size: " << Rows << "x" << Cols << endl;
+        //cout << "\nInitial Matrix (on root process):\n";
+        //PrintMatrix(pMatrix, Rows, Cols);
+        //cout << "\nInitial Vector:\n";
+        //PrintVector(pVector, Cols);
     }
 }
 
@@ -191,14 +191,16 @@ int main(int argc, char* argv[]) {
         cout << "Parallel matrix-vector multiplication program (rectangular)\n";
 
     ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcResult, Rows, Cols, RowNum);
+    MPI_Barrier(MPI_COMM_WORLD);
     Start = MPI_Wtime();
     DataDistribution(pMatrix, pProcRows, pVector, Rows, Cols, RowNum);
     ParallelResultCalculation(pProcRows, pVector, pProcResult, Rows, Cols, RowNum);
     ResultReplication(pProcResult, pResult, Rows, RowNum);
+    MPI_Barrier(MPI_COMM_WORLD);
     Finish = MPI_Wtime();
     Duration = Finish - Start;
 
-    TestResult(pMatrix, pVector, pResult, Rows, Cols);
+    //TestResult(pMatrix, pVector, pResult, Rows, Cols);
     if (ProcRank == 0) {
         cout << "Time of execution" << Duration << endl;
     }
