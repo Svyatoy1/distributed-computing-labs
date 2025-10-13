@@ -26,6 +26,18 @@ void PrintMatrix (double* pMatrix, int RowCount, int ColCount) {
     }
 }
 
+// Function for matrix multiplication
+void SerialResultCalculation(double* pAMatrix, double* pBMatrix, double* pCMatrix, int Size) {
+    int i, j, k; // Loop variables
+    for (i=0; i<Size; i++) {
+        for (j=0; j<Size; j++) {
+            for (k=0; k<Size; k++) {
+                pCMatrix[i*Size+j] += pAMatrix[i*Size+k]*pBMatrix[k*Size+j];
+            }
+        }
+    }
+}
+
 // Function for memory allocation and initialization of matrix elements
 void ProcessInitialization (double* &pAMatrix, double* &pBMatrix, double* &pCMatrix, int &Size) {
     // Setting the size of matrices
@@ -70,10 +82,16 @@ int main(){
     ProcessInitialization(pAMatrix, pBMatrix, pCMatrix, Size);
 
     // Matrix output
-    printf ("\nInitial A Matrix \n");
+    cout << "\nInitial A Matrix \n";
     PrintMatrix(pAMatrix, Size, Size);
-    printf("Initial B Matrix \n");
+    cout << "Initial B Matrix \n";
     PrintMatrix(pBMatrix, Size, Size);
+
+    // Matrix multiplication
+    SerialResultCalculation(pAMatrix, pBMatrix, pCMatrix, Size);
+    // Printing the result matrix
+    cout << "\n Result Matrix: \n";
+    PrintMatrix(pCMatrix, Size, Size);
 
     // Computational process termination
     ProcessTermination(pAMatrix, pBMatrix, pCMatrix);
