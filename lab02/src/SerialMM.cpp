@@ -8,9 +8,14 @@ using namespace std;
 // Function for memory allocation and initialization of matrix elements
 void ProcessInitialization (double* &pAMatrix, double* &pBMatrix, double* &pCMatrix, int &Size) {
     // Setting the size of matrices
-    printf("\nEnter the size of matrices: ");
-    scanf("%d", &Size);
-    printf("\nChosen matrices size = %d \n", Size);
+    do {
+        printf("\nEnter size of matrices: ");
+        scanf("%d", &Size);
+        printf("\nChosen matrices' size = %d", Size);
+        if (Size <= 0)
+            printf("\nSize of objects must be greater than 0!\n");
+    }
+    while (Size <= 0);
 }
 
 int main(){
