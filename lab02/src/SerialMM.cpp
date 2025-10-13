@@ -5,12 +5,25 @@
 #include <limits>
 using namespace std;
 
-double* pAMatrix; // First argument of matrix multiplication
-double* pBMatrix; // Second argument of matrix multiplication
-double* pCMatrix; // Result matrix
-int Size; // Sizes of matrices
+// Function for memory allocation and initialization of matrix elements
+void ProcessInitialization (double* &pAMatrix, double* &pBMatrix, double* &pCMatrix, int &Size) {
+    // Setting the size of matrices
+    printf("\nEnter the size of matrices: ");
+    scanf("%d", &Size);
+    printf("\nChosen matrices size = %d \n", Size);
+}
 
 int main(){
+    double* pAMatrix; // First argument of matrix multiplication
+    double* pBMatrix; // Second argument of matrix multiplication
+    double* pCMatrix; // Result matrix
+    int Size; // Sizes of matrices
+
+    time_t start, finish;
+    double duration;
+
     cout << "Serial matrix multiplication program\n";
+    ProcessInitialization(pAMatrix, pBMatrix, pCMatrix, Size);
+
     return 0;
 }
