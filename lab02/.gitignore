@@ -1,0 +1,26 @@
+# Файли для запуску програм
+SerialMM
+*.out
+*.exe
+
+ParallelMM
+*.out
+*.exe
+
+# Об'єктні файли
+*.o
+
+# Лог-файли
+*.log
+*.tmp
+
+# Папки VSCode
+.vscode/
+.idea/
+
+# Папки для збірки
+build/
+bin/
+
+# Результати виконання
+lab01/results/
