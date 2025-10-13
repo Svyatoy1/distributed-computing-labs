@@ -16,6 +16,17 @@ void DummyDataInitialization(double* pAMatrix, double* pBMatrix, int Size){
     }
 }
 
+// Function for random initialization of matrix elements
+void RandomDataInitialization (double* pAMatrix, double* pBMatrix, int Size) {
+    int i, j; // Loop variables
+    srand(unsigned(clock()));
+    for (i=0; i<Size; i++)
+        for (j=0; j<Size; j++) {
+            pAMatrix[i*Size+j] = rand()/double(1000);
+            pBMatrix[i*Size+j] = rand()/double(1000);
+    }
+}
+
 // Function for formatted matrix output
 void PrintMatrix (double* pMatrix, int RowCount, int ColCount) {
     int i, j; // Loop variables
@@ -55,8 +66,8 @@ void ProcessInitialization (double* &pAMatrix, double* &pBMatrix, double* &pCMat
     pBMatrix = new double [Size*Size];
     pCMatrix = new double [Size*Size];
 
-    // Initialization of matrix elements
-    DummyDataInitialization(pAMatrix, pBMatrix, Size);
+    // Random initialization of matrix elements
+    RandomDataInitialization(pAMatrix, pBMatrix, Size);
     for (int i=0; i<Size*Size; i++) {
         pCMatrix[i] = 0;
     }
@@ -88,10 +99,17 @@ int main(){
     PrintMatrix(pBMatrix, Size, Size);
 
     // Matrix multiplication
+    start = clock();
     SerialResultCalculation(pAMatrix, pBMatrix, pCMatrix, Size);
+    finish = clock();
+    duration = (finish-start)/double(CLOCKS_PER_SEC);
+    
     // Printing the result matrix
     cout << "\n Result Matrix: \n";
     PrintMatrix(pCMatrix, Size, Size);
+
+    // Printing the time spent by matrix multiplication
+    printf("\n Time of execution: %f\n", duration);
 
     // Computational process termination
     ProcessTermination(pAMatrix, pBMatrix, pCMatrix);
