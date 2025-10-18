@@ -271,6 +271,30 @@ void ResultCollection (double* pCMatrix, double* pCblock, int Size, int BlockSiz
     delete [] pResultRow;
 }
 
+// Function for testing the matrix multiplication result
+void TestResult(double* pAMatrix, double* pBMatrix, double* pCMatrix, int Size) {
+    double* pSerialResult; // Result matrix of serial multiplication
+    double Accuracy = 1.e-6; // Comparison accuracy
+    int equal = 0; // =1, if the matrices are not equal
+    int i; // Loop variable
+    if (ProcRank == 0) {
+        pSerialResult = new double [Size*Size];
+        for (i=0; i<Size*Size; i++) {
+            pSerialResult[i] = 0;
+        }
+        SerialResultCalculation(pAMatrix, pBMatrix, pSerialResult, Size);
+        for (i=0; i<Size*Size; i++) {
+            if (fabs(pSerialResult[i]-pCMatrix[i]) >= Accuracy)
+                equal = 1;
+        }
+        if (equal == 1)
+            printf("The results of serial and parallel algorithms are NOT identical. Check your code.");
+        else
+            printf("The results of serial and parallel algorithms are identical.");
+        delete [] pSerialResult;
+    }
+}
+
 int main(int argc, char* argv[]) {
     double* pAMatrix; // First argument of matrix multiplication
     double* pBMatrix; // Second argument of matrix multiplication
