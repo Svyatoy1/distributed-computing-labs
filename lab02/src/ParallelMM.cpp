@@ -213,19 +213,30 @@ void BblockCommunication (double *pBblock, int BlockSize, MPI_Comm ColumnComm) {
     MPI_Sendrecv_replace(pBblock, BlockSize*BlockSize, MPI_DOUBLE, NextProc, 0, PrevProc, 0, ColumnComm, &Status);
 }
 
-// Test printing of the matrix block
-void TestBlocks (double* pBlock, int BlockSize, const char str[]) {
+// Test printing of the matrix block (fixed for correct sequential output)
+void TestBlocks(double* pBlock, int BlockSize, const char str[]) {
     MPI_Barrier(MPI_COMM_WORLD);
     if (ProcRank == 0) {
-        printf("%s \n", str);
+        printf("\n===== %s =====\n", str);
+        fflush(stdout);
     }
-    for (int i=0; i<ProcNum; i++) {
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    for (int i = 0; i < ProcNum; i++) {
         if (ProcRank == i) {
-            printf ("ProcRank = %d \n", ProcRank);
+            printf("\nProcRank = %d\n", ProcRank);
             PrintMatrix(pBlock, BlockSize, BlockSize);
+            fflush(stdout);
         }
         MPI_Barrier(MPI_COMM_WORLD);
     }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+// Function for block multiplication
+void BlockMultiplication(double* pAblock, double* pBblock, double* pCblock, int Size) {
+    SerialResultCalculation(pAblock, pBblock, pCblock, Size);
 }
 
 // Function for parallel execution of the Fox method
@@ -235,15 +246,13 @@ void ParallelResultCalculation(double* pAblock, double* pMatrixAblock, double* p
         ABlockCommunication(iter, pAblock, pMatrixAblock, BlockSize);
 
         // Block multiplication
-        // BlockMultiplication ( pAblock, pBblock, pCblock, BlockSize );
-
-        // Cyclic shift of blocks of matrix B in process grid columns
-        BblockCommunication ( pBblock, BlockSize, ColComm );
+        BlockMultiplication ( pAblock, pBblock, pCblock, BlockSize );
 
         if (ProcRank == 0)
             printf("Iteration number %d \n", iter);
-            
-        TestBlocks(pAblock, BlockSize, "Block of A matrix");
+        
+        // Cyclic shift of blocks of matrix B in process grid columns
+        BblockCommunication ( pBblock, BlockSize, ColComm );
     }
 }
 
@@ -281,17 +290,11 @@ int main(int argc, char* argv[]) {
     ProcessInitialization ( pAMatrix, pBMatrix, pCMatrix, pAblock, pBblock,
     pCblock, pMatrixAblock, Size, BlockSize );
 
-    if (ProcRank == 0) {
-        printf("Initial matrix A \n");
-        PrintMatrix(pAMatrix, Size, Size);
-        printf("Initial matrix B \n");
-        PrintMatrix(pBMatrix, Size, Size);
-    }
-
     // Data distribution among the processes
     DataDistribution(pAMatrix, pBMatrix, pMatrixAblock, pBblock, Size, BlockSize);
-    TestBlocks(pMatrixAblock, BlockSize, "Initial blocks of matrix A");
-    TestBlocks(pBblock, BlockSize, "Initial blocks of matrix B");
+    // Execution of Fox method
+    ParallelResultCalculation(pAblock, pMatrixAblock, pBblock, pCblock, BlockSize);
+    TestBlocks(pCblock, BlockSize, "Result blocks");
 
     // Process termination
     ProcessTermination(pAMatrix, pBMatrix, pCMatrix, pAblock, pBblock, pCblock, pMatrixAblock);
