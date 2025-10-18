@@ -9,6 +9,12 @@ using namespace std;
 int ProcNum = 0; // Number of available processes
 int ProcRank = 0; // Rank of current process
 
+int GridSize; // Size of virtual processor grid
+MPI_Comm GridComm; // Grid communicator
+int GridCoords[2]; // Coordinates of current processor in grid
+MPI_Comm ColComm; // Column communicator
+MPI_Comm RowComm; // Row communicator
+
 // Function for simple initialization of matrix elements
 void DummyDataInitialization(double* pAMatrix, double* pBMatrix, int Size){
     int i, j; // Loop variables
@@ -80,6 +86,34 @@ void SerialResultCalculation(double* pAMatrix, double* pBMatrix, double* pCMatri
     delete[] pBTransposed;
 }
 
+// Function for creating the two-dimensional grid communicator and
+// communicators for each row and each column of the grid
+void CreateGridCommunicators() {
+    int DimSize[2]; // Number of processes in each dimension of the grid
+    int Periodic[2]; // =1, if the grid dimension should be periodic
+    int Subdims[2]; // =1, if the grid dimension should be fixed
+
+    DimSize[0] = GridSize;
+    DimSize[1] = GridSize;
+    Periodic[0] = 1;
+    Periodic[1] = 1;
+
+    // Creation of the Cartesian communicator
+    MPI_Cart_create(MPI_COMM_WORLD, 2, DimSize, Periodic, 1, &GridComm);
+
+    // Determination of the cartesian coordinates for every process
+    MPI_Cart_coords(GridComm, ProcRank, 2, GridCoords);
+
+    // Creating communicators for rows
+    Subdims[0] = 0; // Dimension is fixed
+    Subdims[1] = 1; // Dimension belong to the subgrid
+    MPI_Cart_sub(GridComm, Subdims, &RowComm);
+    // Creating communicators for columns
+    Subdims[0] = 1; // Dimension belong to the subgrid
+    Subdims[1] = 0; // Dimension is fixed
+    MPI_Cart_sub(GridComm, Subdims, &ColComm);
+}
+
 int main(int argc, char* argv[]) {
     double* pAMatrix; // First argument of matrix multiplication
     double* pBMatrix; // Second argument of matrix multiplication
@@ -93,8 +127,18 @@ int main(int argc, char* argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &ProcNum);
     MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);
 
-    if (ProcRank == 0)
-        printf("Parallel matrix multiplication program\n");
+    GridSize = sqrt((double)ProcNum);
+    if (ProcNum != GridSize*GridSize) {
+        if (ProcRank == 0) {
+            printf ("Number of processes must be a perfect square \n");
+        }
+    } else {
+        if (ProcRank == 0)
+            printf("Parallel matrix multiplication program\n");
+
+        // Grid communicator creating
+        CreateGridCommunicators();
+    }
 
     MPI_Finalize();
 }
