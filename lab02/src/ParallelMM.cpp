@@ -256,6 +256,21 @@ void ParallelResultCalculation(double* pAblock, double* pMatrixAblock, double* p
     }
 }
 
+// Function for gathering the result matrix
+void ResultCollection (double* pCMatrix, double* pCblock, int Size, int BlockSize) {
+    double * pResultRow = new double [Size*BlockSize];
+
+    for (int i=0; i<BlockSize; i++) {
+    MPI_Gather( &pCblock[i*BlockSize], BlockSize, MPI_DOUBLE, &pResultRow[i*Size], BlockSize, MPI_DOUBLE, 0, RowComm);
+    }
+
+    if (GridCoords[1] == 0) {
+    MPI_Gather(pResultRow, BlockSize*Size, MPI_DOUBLE, pCMatrix, BlockSize*Size, MPI_DOUBLE, 0, ColComm);
+    }
+
+    delete [] pResultRow;
+}
+
 int main(int argc, char* argv[]) {
     double* pAMatrix; // First argument of matrix multiplication
     double* pBMatrix; // Second argument of matrix multiplication
@@ -294,7 +309,14 @@ int main(int argc, char* argv[]) {
     DataDistribution(pAMatrix, pBMatrix, pMatrixAblock, pBblock, Size, BlockSize);
     // Execution of Fox method
     ParallelResultCalculation(pAblock, pMatrixAblock, pBblock, pCblock, BlockSize);
-    TestBlocks(pCblock, BlockSize, "Result blocks");
+    
+    // Gathering the result matrix
+    ResultCollection(pCMatrix, pCblock, Size, BlockSize);
+
+    if (ProcRank == 0) {
+        printf("Result matrix \n");
+        PrintMatrix(pCMatrix, Size, Size);
+    }
 
     // Process termination
     ProcessTermination(pAMatrix, pBMatrix, pCMatrix, pAblock, pBblock, pCblock, pMatrixAblock);
