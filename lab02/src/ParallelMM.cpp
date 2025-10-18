@@ -185,6 +185,9 @@ double* pMatrixAblock) {
     delete [] pMatrixAblock;
 }
 
+int MPI_Sendrecv_replace (void *buf, int count, MPI_Datatype type,
+int dest,int stag,int source,int rtag,MPI_Comm comm,MPI_Status* status);
+
 // Broadcasting blocks of the matrix A to process grid rows
 void ABlockCommunication (int iter, double *pAblock, double* pMatrixAblock, int BlockSize) {
     // Defining the leading process of the process grid row
@@ -198,6 +201,16 @@ void ABlockCommunication (int iter, double *pAblock, double* pMatrixAblock, int 
 
     // Block broadcasting
     MPI_Bcast(pAblock, BlockSize*BlockSize, MPI_DOUBLE, Pivot, RowComm);
+}
+
+// Function for cyclic shifting the blocks of the matrix B
+void BblockCommunication (double *pBblock, int BlockSize, MPI_Comm ColumnComm) {
+    MPI_Status Status;
+    int NextProc = GridCoords[0] + 1;
+    if ( GridCoords[0] == GridSize-1 ) NextProc = 0;
+    int PrevProc = GridCoords[0] - 1;
+    if ( GridCoords[0] == 0 ) PrevProc = GridSize-1;
+    MPI_Sendrecv_replace(pBblock, BlockSize*BlockSize, MPI_DOUBLE, NextProc, 0, PrevProc, 0, ColumnComm, &Status);
 }
 
 // Test printing of the matrix block
@@ -221,14 +234,16 @@ void ParallelResultCalculation(double* pAblock, double* pMatrixAblock, double* p
         // Sending blocks of matrix A to the process grid rows
         ABlockCommunication(iter, pAblock, pMatrixAblock, BlockSize);
 
+        // Block multiplication
+        // BlockMultiplication ( pAblock, pBblock, pCblock, BlockSize );
+
+        // Cyclic shift of blocks of matrix B in process grid columns
+        BblockCommunication ( pBblock, BlockSize, ColComm );
+
         if (ProcRank == 0)
             printf("Iteration number %d \n", iter);
             
         TestBlocks(pAblock, BlockSize, "Block of A matrix");
-        // Block multiplication
-        // BlockMultiplication ( pAblock, pBblock, pCblock, BlockSize );
-        // Cyclic shift of blocks of matrix B in process grid columns
-        // BblockCommunication ( pBblock, BlockSize, ColComm );
     }
 }
 
