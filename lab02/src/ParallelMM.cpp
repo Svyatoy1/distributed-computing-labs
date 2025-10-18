@@ -288,9 +288,9 @@ void TestResult(double* pAMatrix, double* pBMatrix, double* pCMatrix, int Size) 
                 equal = 1;
         }
         if (equal == 1)
-            printf("The results of serial and parallel algorithms are NOT identical. Check your code.");
+            printf("The results of serial and parallel algorithms are NOT identical. Check your code. ");
         else
-            printf("The results of serial and parallel algorithms are identical.");
+            printf("The results of serial and parallel algorithms are identical. ");
         delete [] pSerialResult;
     }
 }
@@ -329,6 +329,7 @@ int main(int argc, char* argv[]) {
     ProcessInitialization ( pAMatrix, pBMatrix, pCMatrix, pAblock, pBblock,
     pCblock, pMatrixAblock, Size, BlockSize );
 
+    Start = MPI_Wtime();
     // Data distribution among the processes
     DataDistribution(pAMatrix, pBMatrix, pMatrixAblock, pBblock, Size, BlockSize);
     // Execution of Fox method
@@ -336,10 +337,12 @@ int main(int argc, char* argv[]) {
     
     // Gathering the result matrix
     ResultCollection(pCMatrix, pCblock, Size, BlockSize);
+    Finish = MPI_Wtime();
+    Duration = Finish-Start;
 
+    TestResult(pAMatrix, pBMatrix, pCMatrix, Size);
     if (ProcRank == 0) {
-        printf("Result matrix \n");
-        PrintMatrix(pCMatrix, Size, Size);
+        printf("Time of execution = %f\n", Duration);
     }
 
     // Process termination
