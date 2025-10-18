@@ -138,12 +138,29 @@ void ProcessInitialization (double* &pAMatrix, double* &pBMatrix,
     if (ProcRank == 0) {
         pAMatrix = new double [Size*Size];
         pBMatrix = new double [Size*Size];
+        pCMatrix = new double [Size*Size];
         DummyDataInitialization(pAMatrix, pBMatrix, Size);
     }
 
     for (int i=0; i<BlockSize*BlockSize; i++) {
         pCblock[i] = 0;
     }
+}
+
+// Function for computational process termination
+void ProcessTermination (double* pAMatrix, double* pBMatrix,
+double* pCMatrix, double* pAblock, double* pBblock, double* pCblock,
+double* pMatrixAblock) {
+    if (ProcRank == 0) {
+        delete [] pAMatrix;
+        delete [] pBMatrix;
+        delete [] pCMatrix;
+    }
+
+    delete [] pAblock;
+    delete [] pBblock;
+    delete [] pCblock;
+    delete [] pMatrixAblock;
 }
 
 int main(int argc, char* argv[]) {
@@ -186,6 +203,9 @@ int main(int argc, char* argv[]) {
         printf("Initial matrix B \n");
         PrintMatrix(pBMatrix, Size, Size);
     }
+
+    // Process termination
+    ProcessTermination(pAMatrix, pBMatrix, pCMatrix, pAblock, pBblock, pCblock, pMatrixAblock);
 
     MPI_Finalize();
 }
