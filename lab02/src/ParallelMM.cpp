@@ -114,12 +114,48 @@ void CreateGridCommunicators() {
     MPI_Cart_sub(GridComm, Subdims, &ColComm);
 }
 
+// Function for memory allocation and data initialization
+void ProcessInitialization (double* &pAMatrix, double* &pBMatrix,
+    double* &pCMatrix, double* &pAblock, double* &pBblock, double* &pCblock,
+    double* &pMatrixAblock, int &Size, int &BlockSize ) {
+    if (ProcRank == 0) {
+        do {
+            printf("\nEnter the size of the matrices: ");
+            scanf("%d", &Size);
+            if (Size%GridSize != 0) {
+                printf ("Size of matrices must be divisible by the grid size! \n");
+            }
+        } while (Size%GridSize != 0);
+    }
+    MPI_Bcast(&Size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    BlockSize = Size/GridSize;
+    pAblock = new double [BlockSize*BlockSize];
+    pBblock = new double [BlockSize*BlockSize];
+    pCblock = new double [BlockSize*BlockSize];
+    pMatrixAblock = new double [BlockSize*BlockSize];
+
+    if (ProcRank == 0) {
+        pAMatrix = new double [Size*Size];
+        pBMatrix = new double [Size*Size];
+        DummyDataInitialization(pAMatrix, pBMatrix, Size);
+    }
+
+    for (int i=0; i<BlockSize*BlockSize; i++) {
+        pCblock[i] = 0;
+    }
+}
+
 int main(int argc, char* argv[]) {
     double* pAMatrix; // First argument of matrix multiplication
     double* pBMatrix; // Second argument of matrix multiplication
     double* pCMatrix; // Result matrix
-
     int Size; // Size of matrices
+    int BlockSize; // Sizes of matrix blocks
+    double *pMatrixAblock; // Initial block of matrix A
+    double *pAblock; // Current block of matrix A
+    double *pBblock; // Current block of matrix B
+    double *pCblock; // Block of result matrix C    
     double Start, Finish, Duration;
 
     setvbuf(stdout, 0, _IONBF, 0);
@@ -138,6 +174,17 @@ int main(int argc, char* argv[]) {
 
         // Grid communicator creating
         CreateGridCommunicators();
+    }
+
+    // Memory allocation and initialization of matrix elements
+    ProcessInitialization ( pAMatrix, pBMatrix, pCMatrix, pAblock, pBblock,
+    pCblock, pMatrixAblock, Size, BlockSize );
+
+    if (ProcRank == 0) {
+        printf("Initial matrix A \n");
+        PrintMatrix(pAMatrix, Size, Size);
+        printf("Initial matrix B \n");
+        PrintMatrix(pBMatrix, Size, Size);
     }
 
     MPI_Finalize();
