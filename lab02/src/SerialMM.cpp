@@ -37,16 +37,43 @@ void PrintMatrix (double* pMatrix, int RowCount, int ColCount) {
     }
 }
 
-// Function for matrix multiplication
+// Optimised function for matrix multiplication
 void SerialResultCalculation(double* pAMatrix, double* pBMatrix, double* pCMatrix, int Size) {
-    int i, j, k; // Loop variables
-    for (i=0; i<Size; i++) {
-        for (j=0; j<Size; j++) {
-            for (k=0; k<Size; k++) {
-                pCMatrix[i*Size+j] += pAMatrix[i*Size+k]*pBMatrix[k*Size+j];
+    // transpose of matrix B to improve cache locality
+    double* pBTransposed = new double[Size * Size];
+    for (int i = 0; i < Size; i++) {
+        for (int j = 0; j < Size; j++) {
+            pBTransposed[j * Size + i] = pBMatrix[i * Size + j];
+        }
+    }
+
+    // block multiplication for cache storage
+    const int BLOCK = 64; // optimal block size for L1/L2 cash
+
+    for (int i0 = 0; i0 < Size; i0 += BLOCK) {
+        for (int j0 = 0; j0 < Size; j0 += BLOCK) {
+            for (int k0 = 0; k0 < Size; k0 += BLOCK) {
+
+                int iMax = min(i0 + BLOCK, Size);
+                int jMax = min(j0 + BLOCK, Size);
+                int kMax = min(k0 + BLOCK, Size);
+
+                for (int i = i0; i < iMax; i++) {
+                    for (int j = j0; j < jMax; j++) {
+                        double sum = pCMatrix[i * Size + j];
+                        const double* aRow = &pAMatrix[i * Size + k0];
+                        const double* bRow = &pBTransposed[j * Size + k0];
+                        for (int k = k0; k < kMax; k++) {
+                            sum += aRow[k - k0] * bRow[k - k0];
+                        }
+                        pCMatrix[i * Size + j] = sum;
+                    }
+                }
             }
         }
     }
+
+    delete[] pBTransposed;
 }
 
 // Function for memory allocation and initialization of matrix elements
@@ -54,7 +81,10 @@ void ProcessInitialization (double* &pAMatrix, double* &pBMatrix, double* &pCMat
     // Setting the size of matrices
     do {
         printf("\nEnter size of matrices: ");
-        scanf("%d", &Size);
+        if (scanf("%d", &Size) != 1) {
+            fprintf(stderr, "Invalid input.\n");
+            exit(1);
+        };
         printf("\nChosen matrices' size = %d", Size);
         if (Size <= 0)
             printf("\nSize of objects must be greater than 0!\n");
