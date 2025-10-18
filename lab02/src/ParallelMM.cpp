@@ -147,6 +147,28 @@ void ProcessInitialization (double* &pAMatrix, double* &pBMatrix,
     }
 }
 
+// Function for checkerboard matrix decomposition
+void CheckerboardMatrixScatter(double* pMatrix, double* pMatrixBlock, int Size, int BlockSize) {
+    double * pMatrixRow = new double [BlockSize*Size];
+    if (GridCoords[1] == 0) {
+        MPI_Scatter(pMatrix, BlockSize*Size, MPI_DOUBLE, pMatrixRow,
+        BlockSize*Size, MPI_DOUBLE, 0, ColComm);
+    }
+
+    for (int i=0; i<BlockSize; i++) {
+        MPI_Scatter(&pMatrixRow[i*Size], BlockSize, MPI_DOUBLE,
+        &(pMatrixBlock[i*BlockSize]), BlockSize, MPI_DOUBLE, 0, RowComm);
+    }
+    
+    delete [] pMatrixRow;
+}
+
+// Function for data distribution among the processes
+void DataDistribution(double* pAMatrix, double* pBMatrix, double* pMatrixAblock, double* pBblock, int Size, int BlockSize) {
+    CheckerboardMatrixScatter(pAMatrix, pMatrixAblock, Size, BlockSize);
+    CheckerboardMatrixScatter(pBMatrix, pBblock, Size, BlockSize);
+}
+
 // Function for computational process termination
 void ProcessTermination (double* pAMatrix, double* pBMatrix,
 double* pCMatrix, double* pAblock, double* pBblock, double* pCblock,
@@ -161,6 +183,21 @@ double* pMatrixAblock) {
     delete [] pBblock;
     delete [] pCblock;
     delete [] pMatrixAblock;
+}
+
+// Test printing of the matrix block
+void TestBlocks (double* pBlock, int BlockSize, const char str[]) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (ProcRank == 0) {
+        printf("%s \n", str);
+    }
+    for (int i=0; i<ProcNum; i++) {
+        if (ProcRank == i) {
+            printf ("ProcRank = %d \n", ProcRank);
+            PrintMatrix(pBlock, BlockSize, BlockSize);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -203,6 +240,11 @@ int main(int argc, char* argv[]) {
         printf("Initial matrix B \n");
         PrintMatrix(pBMatrix, Size, Size);
     }
+
+    // Data distribution among the processes
+    DataDistribution(pAMatrix, pBMatrix, pMatrixAblock, pBblock, Size, BlockSize);
+    TestBlocks(pMatrixAblock, BlockSize, "Initial blocks of matrix A");
+    TestBlocks(pBblock, BlockSize, "Initial blocks of matrix B");
 
     // Process termination
     ProcessTermination(pAMatrix, pBMatrix, pCMatrix, pAblock, pBblock, pCblock, pMatrixAblock);
