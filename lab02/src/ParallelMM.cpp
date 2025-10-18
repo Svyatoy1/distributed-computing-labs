@@ -185,6 +185,21 @@ double* pMatrixAblock) {
     delete [] pMatrixAblock;
 }
 
+// Broadcasting blocks of the matrix A to process grid rows
+void ABlockCommunication (int iter, double *pAblock, double* pMatrixAblock, int BlockSize) {
+    // Defining the leading process of the process grid row
+    int Pivot = (GridCoords[0] + iter) % GridSize;
+
+    // Copying the transmitted block in a separate memory buffer
+    if (GridCoords[1] == Pivot) {
+        for (int i=0; i<BlockSize*BlockSize; i++)
+            pAblock[i] = pMatrixAblock[i];
+    }
+
+    // Block broadcasting
+    MPI_Bcast(pAblock, BlockSize*BlockSize, MPI_DOUBLE, Pivot, RowComm);
+}
+
 // Test printing of the matrix block
 void TestBlocks (double* pBlock, int BlockSize, const char str[]) {
     MPI_Barrier(MPI_COMM_WORLD);
@@ -197,6 +212,23 @@ void TestBlocks (double* pBlock, int BlockSize, const char str[]) {
             PrintMatrix(pBlock, BlockSize, BlockSize);
         }
         MPI_Barrier(MPI_COMM_WORLD);
+    }
+}
+
+// Function for parallel execution of the Fox method
+void ParallelResultCalculation(double* pAblock, double* pMatrixAblock, double* pBblock, double* pCblock, int BlockSize) {
+    for (int iter = 0; iter < GridSize; iter ++) {
+        // Sending blocks of matrix A to the process grid rows
+        ABlockCommunication(iter, pAblock, pMatrixAblock, BlockSize);
+
+        if (ProcRank == 0)
+            printf("Iteration number %d \n", iter);
+            
+        TestBlocks(pAblock, BlockSize, "Block of A matrix");
+        // Block multiplication
+        // BlockMultiplication ( pAblock, pBblock, pCblock, BlockSize );
+        // Cyclic shift of blocks of matrix B in process grid columns
+        // BblockCommunication ( pBblock, BlockSize, ColComm );
     }
 }
 
