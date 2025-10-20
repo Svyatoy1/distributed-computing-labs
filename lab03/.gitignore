@@ -1,9 +1,9 @@
 # Файли для запуску програм
-SerialMM
+SerialGauss
 *.out
 *.exe
 
-ParallelMM
+ParallelGauss
 *.out
 *.exe
 
@@ -23,4 +23,4 @@ build/
 bin/
 
 # Результати виконання
-lab02/results/
+lab03/results/
