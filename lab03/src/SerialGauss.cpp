@@ -72,6 +72,13 @@ void PrintVector (double* pVector, int Size) {
     printf("\n");
 }
 
+// Function for computational process termination
+void ProcessTermination (double* pMatrix,double* pVector,double* pResult) {
+    delete [] pMatrix;
+    delete [] pVector;
+    delete [] pResult;
+}
+
 int main () {
     double* pMatrix; // Matrix of the linear system
     double* pVector; // Right parts of the linear system
@@ -89,6 +96,9 @@ int main () {
     PrintMatrix(pMatrix, Size, Size);
     printf("Initial Vector \n");
     PrintVector(pVector, Size);
+
+    // Process termination
+    ProcessTermination(pMatrix, pVector, pResult);
 
     return 0;
 }
