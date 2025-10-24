@@ -9,9 +9,6 @@ using namespace std;
 int ProcNum = 0; // Number of the available processes
 int ProcRank = 0; // Rank of the current process
 
-int* pSerialPivotPos; // Number of pivot rows selected at the iterations
-int* pSerialPivotIter; // Iterations, at which the rows were pivots
-
 int* pProcInd; // Number of the first row located on the processes
 int* pProcNum; // Number of the linear system rows located on the processes
 
@@ -430,28 +427,25 @@ int main(int argc, char* argv[]) {
     // Memory allocation and data initialization
     ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult, Size, RowNum);
 
+    Start = MPI_Wtime();
     // Distributing the initial data between the processes
     DataDistribution(pMatrix, pProcRows, pVector, pProcVector, Size, RowNum);
-    TestDistribution(pMatrix, pVector, pProcRows, pProcVector, Size, RowNum);
-
-    if (ProcRank == 0) {
-        printf("Initial matrix \n");
-        PrintMatrix(pMatrix, Size, Size);
-        printf("Initial vector \n");
-        PrintVector(pVector, Size);
-    }
 
     // The execution of the parallel Gauss algorithm
     ParallelResultCalculation (pProcRows, pProcVector, pProcResult, Size, RowNum);
 
     // Gathering the result vector
     ResultCollection(pProcResult, pResult);
-    if (ProcRank == 0) {
-        printf ("Result vector \n");
-        PrintResultVector(pResult, Size);
-}
 
-    TestDistribution(pMatrix, pVector, pProcRows, pProcVector, Size, RowNum);
+    Finish = MPI_Wtime();
+    Duration = Finish-Start;
+
+    // Testing the result
+    TestResult(pMatrix, pVector, pResult, Size);
+
+    // Printing the time spent by parallel Gauss algorithm
+    if (ProcRank == 0)
+        printf("\n Time of execution: %f\n", Duration);
 
     // Process termination
     ProcessTermination (pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult);
