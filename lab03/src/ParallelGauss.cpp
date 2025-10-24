@@ -15,6 +15,9 @@ int* pSerialPivotIter; // Iterations, at which the rows were pivots
 int* pProcInd; // Number of the first row located on the processes
 int* pProcNum; // Number of the linear system rows located on the processes
 
+int *pParallelPivotPos; // Number of rows selected as the pivot ones
+int *pProcPivotIter; // Number of iterations, at which the process rows were used as the pivot ones
+
 // Function for simple initialization of the matrix and the vector elements
 void DummyDataInitialization (double* pMatrix, double* pVector, int Size) {
     int i, j; // Loop variables
@@ -227,6 +230,87 @@ void TestDistribution(double* pMatrix, double* pVector, double* pProcRows, doubl
     }
 }
 
+// Fuction for the column elimination
+void ParallelEliminateColumns(double* pProcRows, double* pProcVector, double* pPivotRow, int Size, int RowNum, int Iter) {
+    double PivotFactor;
+    for (int i=0; i<RowNum; i++) {
+        if (pProcPivotIter[i] == -1) {
+            PivotFactor = pProcRows[i*Size+Iter] / pPivotRow[Iter];
+            for (int j=Iter; j<Size; j++) {
+                pProcRows[i*Size + j] -= PivotFactor* pPivotRow[j];
+            }
+            pProcVector[i] -= PivotFactor * pPivotRow[Size];
+        }
+    }
+}
+
+// Function for the Gaussian elimination
+void ParallelGaussianElimination (double* pProcRows, double* pProcVector, int Size, int RowNum) {
+    double MaxValue; // Value of the pivot element of thе process
+    int PivotPos; // Position of the pivot row in the process stripe
+
+    struct { double MaxValue; int ProcRank; } ProcPivot, Pivot;
+    double *pPivotRow; // Pivot row of the current iteration
+    pPivotRow = new double [Size+1];
+
+    // The iterations of the Gaussian elimination
+    for (int i=0; i<Size; i++) {
+        // Calculating the local pivot row
+        for (int j=0; j<RowNum; j++) {
+            if ((pProcPivotIter[j] == -1) && (MaxValue < fabs(pProcRows[j*Size+i]))) {
+                MaxValue = fabs(pProcRows[j*Size+i]);
+                PivotPos = j;
+            }
+        }
+
+        // Finding the global pivot row
+        ProcPivot.MaxValue = MaxValue;
+        ProcPivot.ProcRank = ProcRank;
+
+        // Finding the pivot process
+        MPI_Allreduce(&ProcPivot, &Pivot, 1, MPI_DOUBLE_INT, MPI_MAXLOC, MPI_COMM_WORLD);
+
+        // Storing the number of the pivot row
+        if ( ProcRank == Pivot.ProcRank ){
+            pProcPivotIter[PivotPos]= i;
+            pParallelPivotPos[i]= pProcInd[ProcRank] + PivotPos;
+        }
+        MPI_Bcast(&pParallelPivotPos[i], 1, MPI_INT, Pivot.ProcRank, MPI_COMM_WORLD);
+
+        // Broadcasting the pivot row
+        if ( ProcRank == Pivot.ProcRank ){
+            // Fill the pivot row
+            for (int j=0; j<Size; j++) {
+                pPivotRow[j] = pProcRows[PivotPos*Size + j];
+            }
+            pPivotRow[Size] = pProcVector[PivotPos];
+        }
+        MPI_Bcast(pPivotRow, Size+1, MPI_DOUBLE, Pivot.ProcRank, MPI_COMM_WORLD);
+
+        // Column elimination
+        ParallelEliminateColumns(pProcRows, pProcVector, pPivotRow, Size, RowNum, i);
+    }
+    delete [] pPivotRow;
+}
+
+// Function for execution of the parallel Gauss algorithm
+void ParallelResultCalculation(double* pProcRows, double* pProcVector, double* pProcResult, int Size, int RowNum) {
+    // Memory allocation
+    pParallelPivotPos = new int [Size];
+    pProcPivotIter = new int [RowNum];
+    for (int i=0; i<RowNum; i++)
+        pProcPivotIter[i] = -1;
+
+    // Gaussian elimination
+    ParallelGaussianElimination (pProcRows, pProcVector, Size, RowNum);
+    // Back substitution
+    //ParallelBackSubstitution (pProcRows, pProcVector, pProcResult, Size, RowNum);
+
+    // Memory deallocation
+    delete [] pParallelPivotPos;
+    delete [] pProcPivotIter;
+}
+
 // Function for computational process termination
 void ProcessTermination (double* pMatrix, double* pVector, double* pResult,
 double* pProcRows, double* pProcVector, double* pProcResult) {
@@ -273,6 +357,10 @@ int main(int argc, char* argv[]) {
         printf("Initial vector \n");
         PrintVector(pVector, Size);
     }
+
+    // The execution of the parallel Gauss algorithm
+    ParallelResultCalculation (pProcRows, pProcVector, pProcResult, Size, RowNum);
+    TestDistribution(pMatrix, pVector, pProcRows, pProcVector, Size, RowNum);
 
     // Process termination
     ProcessTermination (pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult);
