@@ -1,4 +1,4 @@
-# EXERCISE 2 
+# EXERCISE 3 
 Запускаємо програму в наступній послідовності:
 `g++ src/SerialGauss.cpp -o SerialGauss` `./SerialGauss`
 
@@ -14,3 +14,7 @@
 | 6     | 2,000       | 8.224372             |
 | 7     | 2,500       | 15.790983            |
 | 8     | 3,000       | 27.358713            |
+
+# EXERCISE 5
+Запускаємо програму в наступній послідовності:
+`mpic++ src/ParallelGauss.cpp -o ParallelGauss`, `mpirun -np 1 ./ParallelGauss`
