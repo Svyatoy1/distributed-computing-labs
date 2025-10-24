@@ -293,6 +293,47 @@ void ParallelGaussianElimination (double* pProcRows, double* pProcVector, int Si
     delete [] pPivotRow;
 }
 
+// Function for finding the pivot row of the back substitution
+void FindBackPivotRow(int RowIndex, int &IterProcRank, int &IterPivotPos) {
+    for (int i=0; i<ProcNum-1; i++) {
+        if ((pProcInd[i]<=RowIndex) && (RowIndex<pProcInd[i+1]))
+            IterProcRank = i;
+    }
+    if (RowIndex >= pProcInd[ProcNum-1])
+        IterProcRank = ProcNum-1;
+    IterPivotPos = RowIndex - pProcInd[IterProcRank];
+}
+
+// Function for the back substitution
+void ParallelBackSubstitution (double* pProcRows, double* pProcVector, double* pProcResult, int Size, int RowNum) {
+    int IterProcRank; // Rank of the process with the current pivot row
+    int IterPivotPos; // Position of the pivot row of the process
+    double IterResult; // Calculated value of the current unknown
+    double val;
+    
+    // The iterations of the back substitution
+    for (int i=Size-1; i>=0; i--) {
+        // Calculating the rank of the process, which holds the pivot row
+        FindBackPivotRow(pParallelPivotPos[i],IterProcRank,IterPivotPos);
+
+    // Calculating the unknown
+    if (ProcRank == IterProcRank) {
+        IterResult = pProcVector[IterPivotPos] / pProcRows[IterPivotPos*Size+i];
+        pProcResult[IterPivotPos] = IterResult;
+    }
+
+    // Broadcasting the value of the current unknown
+    MPI_Bcast(&IterResult, 1, MPI_DOUBLE, IterProcRank, MPI_COMM_WORLD);
+
+    // Updating the values of the vector
+    for (int j=0; j<RowNum; j++)
+        if ( pProcPivotIter[j] < i ) {
+            val = pProcRows[j*Size + i] * IterResult;
+            pProcVector[j]=pProcVector[j] - val;
+        }
+    }
+}
+
 // Function for execution of the parallel Gauss algorithm
 void ParallelResultCalculation(double* pProcRows, double* pProcVector, double* pProcResult, int Size, int RowNum) {
     // Memory allocation
@@ -304,7 +345,7 @@ void ParallelResultCalculation(double* pProcRows, double* pProcVector, double* p
     // Gaussian elimination
     ParallelGaussianElimination (pProcRows, pProcVector, Size, RowNum);
     // Back substitution
-    //ParallelBackSubstitution (pProcRows, pProcVector, pProcResult, Size, RowNum);
+    ParallelBackSubstitution (pProcRows, pProcVector, pProcResult, Size, RowNum);
 
     // Memory deallocation
     delete [] pParallelPivotPos;
