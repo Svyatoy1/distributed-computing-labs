@@ -140,23 +140,36 @@ void SerialResultCalculation(double* pMatrix, double* pVector, double* pResult, 
 }
 
 // Function for memory allocation and data initialization
-void ProcessInitialization (double* &pMatrix, double* &pVector, double* &pResult, int &Size) {
-    // Setting the size of the matrix and the vector
-    do {
-        printf("\nEnter the size of the matrix and the vector: ");
-        scanf("%d", &Size);
-        printf("\nChosen size = %d", Size);
-        if (Size <= 0)
-            printf("\nSize of objects must be greater than 0!\n");
-    } while (Size <= 0);
+void ProcessInitialization (double* &pMatrix, double* &pVector, double* &pResult, double* &pProcRows, 
+double* &pProcVector, double* &pProcResult, int &Size, int &RowNum) {
+    if (ProcRank == 0) {
+        do {
+            printf("\nEnter the size of the matrix and the vector: ");
+            scanf("%d", &Size);
+            if (Size < ProcNum) {
+                printf ("Size must be greater than number of processes! \n");
+            }
+        } while (Size < ProcNum);
+    }
+    MPI_Bcast(&Size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    // Memory allocation
-    pMatrix = new double [Size*Size];
-    pVector = new double [Size];
-    pResult = new double [Size];
+    int RestRows = Size;
+    for (int i=0; i<ProcRank; i++)
+        RestRows = RestRows-RestRows/(ProcNum-i);
 
-    // Initialization of the matrix and the vector elements
-    DummyDataInitialization(pMatrix, pVector, Size);
+    RowNum = RestRows/(ProcNum-ProcRank);
+
+    pProcRows = new double [RowNum*Size];
+    pProcVector = new double [RowNum];
+    pProcResult = new double [RowNum];
+
+    if (ProcRank == 0) {
+        pMatrix = new double [Size*Size];
+        pVector = new double [Size];
+        pResult = new double [Size];
+        // Initialization of the matrix and the vector elements
+        DummyDataInitialization (pMatrix, pVector, Size);
+    }
 }
 
 // Function for computational process termination
@@ -170,7 +183,11 @@ int main(int argc, char* argv[]) {
     double* pMatrix; // Matrix of the linear system
     double* pVector; // Right parts of the linear system
     double* pResult; // Result vector
+    double *pProcRows; // Rows of the matrix A
+    double *pProcVector; // Block of the vector b
+    double *pProcResult; // Block of the vector x
     int Size; // Size of the matrix and the vectors
+    int RowNum; // Number of the matrix rows
     double Start, Finish, Duration;
 
     setvbuf(stdout, 0, _IONBF, 0);
@@ -180,6 +197,16 @@ int main(int argc, char* argv[]) {
 
     if (ProcRank == 0)
         printf("Parallel Gauss algorithm for solving linear systems\n");
+
+    // Memory allocation and data initialization
+    ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult, Size, RowNum);
+
+    if (ProcRank == 0) {
+        printf("Initial matrix \n");
+        PrintMatrix(pMatrix, Size, Size);
+        printf("Initial vector \n");
+        PrintVector(pVector, Size);
+    }
 
     MPI_Finalize();
 }
