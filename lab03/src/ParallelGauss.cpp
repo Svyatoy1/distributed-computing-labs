@@ -12,6 +12,9 @@ int ProcRank = 0; // Rank of the current process
 int* pSerialPivotPos; // Number of pivot rows selected at the iterations
 int* pSerialPivotIter; // Iterations, at which the rows were pivots
 
+int* pProcInd; // Number of the first row located on the processes
+int* pProcNum; // Number of the linear system rows located on the processes
+
 // Function for simple initialization of the matrix and the vector elements
 void DummyDataInitialization (double* pMatrix, double* pVector, int Size) {
     int i, j; // Loop variables
@@ -172,6 +175,58 @@ double* &pProcVector, double* &pProcResult, int &Size, int &RowNum) {
     }
 }
 
+// Function for the data distribution among the processes
+void DataDistribution(double* pMatrix, double* pProcRows, double* pVector, double* pProcVector, int Size, int RowNum) {
+    int *pSendNum; // Number of the elements sent to the process
+    int *pSendInd; // Index of the first data element sent to the process
+    int RestRows=Size; // Number of rows, that have not been distributed yet
+    int i; // Loop variable
+
+    // Alloc memory for temporary objects
+    pSendInd = new int [ProcNum];
+    pSendNum = new int [ProcNum];
+
+    // Define the disposition of the matrix rows for the current process
+    RowNum = (Size/ProcNum);
+    pSendNum[0] = RowNum*Size;
+    pSendInd[0] = 0;
+
+    for (i=1; i<ProcNum; i++) {
+        RestRows -= RowNum;
+        RowNum = RestRows/(ProcNum-i);
+        pSendNum[i] = RowNum*Size;
+        pSendInd[i] = pSendInd[i-1]+pSendNum[i-1];
+    }
+
+    // Scatter the rows
+    MPI_Scatterv(pMatrix, pSendNum, pSendInd, MPI_DOUBLE, pProcRows, pSendNum[ProcRank], MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    // Free the memory
+    delete [] pSendNum;
+    delete [] pSendInd;
+}
+
+// Function for testing the data distribution
+void TestDistribution(double* pMatrix, double* pVector, double* pProcRows, double* pProcVector, int Size, int RowNum) {
+    if (ProcRank == 0) {
+        printf("Initial Matrix: \n");
+        PrintMatrix(pMatrix, Size, Size);
+        printf("Initial Vector: \n");
+        PrintVector(pVector, Size);
+    }
+
+    for (int i=0; i<ProcNum; i++) {
+        if (ProcRank == i) {
+            printf("\nProcRank = %d \n", ProcRank);
+            printf(" Matrix Stripe:\n");
+            PrintMatrix(pProcRows, RowNum, Size);
+            printf(" Vector: \n");
+            PrintVector(pProcVector, RowNum);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+}
+
 // Function for computational process termination
 void ProcessTermination (double* pMatrix, double* pVector, double* pResult,
 double* pProcRows, double* pProcVector, double* pProcResult) {
@@ -207,6 +262,10 @@ int main(int argc, char* argv[]) {
 
     // Memory allocation and data initialization
     ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult, Size, RowNum);
+
+    // Distributing the initial data between the processes
+    DataDistribution(pMatrix, pProcRows, pVector, pProcVector, Size, RowNum);
+    TestDistribution(pMatrix, pVector, pProcRows, pProcVector, Size, RowNum);
 
     if (ProcRank == 0) {
         printf("Initial matrix \n");
