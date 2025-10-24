@@ -98,8 +98,8 @@ void SerialGaussianElimination(double* pMatrix,double* pVector,int Size) {
             pSerialPivotIter[PivotRow] = Iter;
             SerialColumnElimination(pMatrix, pVector, PivotRow, Iter, Size);
         }
-    printf ("The matrix of the linear system after the elimination: \n");
-    PrintMatrix(pMatrix, Size, Size);
+    //printf ("The matrix of the linear system after the elimination: \n");
+    //PrintMatrix(pMatrix, Size, Size);
 }
 
 // Function for the back substution
@@ -176,17 +176,23 @@ int main () {
     ProcessInitialization(pMatrix, pVector, pResult, Size);
 
     // Matrix and vector output
-    printf ("\nInitial Matrix \n");
-    PrintMatrix(pMatrix, Size, Size);
-    printf("Initial Vector \n");
-    PrintVector(pVector, Size);
+    //printf ("\nInitial Matrix \n");
+    //PrintMatrix(pMatrix, Size, Size);
+    //printf("Initial Vector \n");
+    //PrintVector(pVector, Size);
 
     // Execution of Gauss algorithm
+    start = clock();
     SerialResultCalculation(pMatrix, pVector, pResult, Size);
+    finish = clock();
+    duration = (finish-start)/double(CLOCKS_PER_SEC);
 
     // Printing the result vector
-    printf ("\n Result Vector: \n");
-    PrintVector(pResult, Size);
+    //printf ("\n Result Vector: \n");
+    //PrintVector(pResult, Size);
+
+    // Printing the execution time of Gauss method
+    printf("\n Time of execution: %f\n", duration);
 
     // Process termination
     ProcessTermination(pMatrix, pVector, pResult);
