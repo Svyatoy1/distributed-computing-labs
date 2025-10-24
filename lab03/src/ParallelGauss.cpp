@@ -352,6 +352,20 @@ void ParallelResultCalculation(double* pProcRows, double* pProcVector, double* p
     delete [] pProcPivotIter;
 }
 
+// Function for gathering the result vector
+void ResultCollection(double* pProcResult, double* pResult) {
+    //Gathering the result vector on the pivot processor
+    MPI_Gatherv(pProcResult, pProcNum[ProcRank], MPI_DOUBLE, pResult,
+    pProcNum, pProcInd, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+}
+
+// Function for formatted result vector output
+void PrintResultVector (double* pResult, int Size) {
+    int i;
+    for (i=0; i<Size; i++)
+        printf("%7.4f ", pResult[pParallelPivotPos[i]]);
+}
+
 // Function for computational process termination
 void ProcessTermination (double* pMatrix, double* pVector, double* pResult,
 double* pProcRows, double* pProcVector, double* pProcResult) {
@@ -401,6 +415,14 @@ int main(int argc, char* argv[]) {
 
     // The execution of the parallel Gauss algorithm
     ParallelResultCalculation (pProcRows, pProcVector, pProcResult, Size, RowNum);
+
+    // Gathering the result vector
+    ResultCollection(pProcResult, pResult);
+    if (ProcRank == 0) {
+        printf ("Result vector \n");
+        PrintResultVector(pResult, Size);
+}
+
     TestDistribution(pMatrix, pVector, pProcRows, pProcVector, Size, RowNum);
 
     // Process termination
