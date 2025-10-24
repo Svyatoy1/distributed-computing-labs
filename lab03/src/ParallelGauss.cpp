@@ -173,10 +173,17 @@ double* &pProcVector, double* &pProcResult, int &Size, int &RowNum) {
 }
 
 // Function for computational process termination
-void ProcessTermination (double* pMatrix,double* pVector,double* pResult) {
-    delete [] pMatrix;
-    delete [] pVector;
-    delete [] pResult;
+void ProcessTermination (double* pMatrix, double* pVector, double* pResult,
+double* pProcRows, double* pProcVector, double* pProcResult) {
+    if (ProcRank == 0) {
+        delete [] pMatrix;
+        delete [] pVector;
+        delete [] pResult;
+    }
+
+    delete [] pProcRows;
+    delete [] pProcVector;
+    delete [] pProcResult;
 }
 
 int main(int argc, char* argv[]) {
@@ -208,5 +215,7 @@ int main(int argc, char* argv[]) {
         PrintVector(pVector, Size);
     }
 
+    // Process termination
+    ProcessTermination (pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult);
     MPI_Finalize();
 }
