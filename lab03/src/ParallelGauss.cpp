@@ -62,86 +62,6 @@ void PrintVector (double* pVector, int Size) {
     printf("\n");
 }
 
-// Function for finding the pivot row
-int FindPivotRow(double* pMatrix, int Size, int Iter) {
-    int PivotRow = -1; // Index of the pivot row
-    double MaxValue = 0; // Value of the pivot element
-    int i; // Loop variable
-
-    // Choose the row, that stores the maximum element
-    for (i=0; i<Size; i++) {
-        if ((pSerialPivotIter[i] == -1) && (fabs(pMatrix[i*Size+Iter]) > MaxValue)) {
-            PivotRow = i;
-            MaxValue = fabs(pMatrix[i*Size+Iter]);
-        }
-    }
-    return PivotRow;
-}
-
-// Function for the column elimination
-void SerialColumnElimination (double* pMatrix, double* pVector, int Pivot, int Iter, int Size) {
-    double PivotValue, PivotFactor;
-    PivotValue = pMatrix[Pivot*Size+Iter];
-    for (int i=0; i<Size; i++) {
-        if (pSerialPivotIter[i] == -1) {
-            PivotFactor = pMatrix[i*Size+Iter] / PivotValue;
-            for (int j=Iter; j<Size; j++) {
-                pMatrix[i*Size + j] -= PivotFactor * pMatrix[Pivot*Size+j];
-            }
-            pVector[i] -= PivotFactor * pVector[Pivot];
-        }
-    }
-}
-
-// Function for the Gaussian elimination
-void SerialGaussianElimination(double* pMatrix,double* pVector,int Size) {
-    int Iter; // Number of the iteration of the Gaussian elimination
-    int PivotRow; // Number of the current pivot row
-        for (Iter=0; Iter<Size; Iter++) {
-        // Finding the pivot row
-            PivotRow = FindPivotRow(pMatrix, Size,Iter);
-            pSerialPivotPos[Iter] = PivotRow;
-            pSerialPivotIter[PivotRow] = Iter;
-            SerialColumnElimination(pMatrix, pVector, PivotRow, Iter, Size);
-        }
-    //printf ("The matrix of the linear system after the elimination: \n");
-    //PrintMatrix(pMatrix, Size, Size);
-}
-
-// Function for the back substution
-void SerialBackSubstitution (double* pMatrix, double* pVector, double* pResult, int Size) {
-    int RowIndex, Row;
-    for (int i=Size-1; i>=0; i--) {
-        RowIndex = pSerialPivotPos[i];
-        pResult[i] = pVector[RowIndex]/pMatrix[Size*RowIndex+i];
-        for (int j=0; j<i; j++) {
-            Row = pSerialPivotPos[j];
-            pVector[j] -= pMatrix[Row*Size+i]*pResult[i];
-            pMatrix[Row*Size+i] = 0;
-        }
-    }
-}
-
-// Function for the execution of Gauss algorithm
-void SerialResultCalculation(double* pMatrix, double* pVector, double* pResult, int Size) {
-    // Memory allocation
-    pSerialPivotPos = new int [Size];
-    pSerialPivotIter = new int [Size];
-    for (int i=0; i<Size; i++) {
-        pSerialPivotIter[i] = -1;
-    }
-
-    // Gaussian elimination
-    SerialGaussianElimination (pMatrix, pVector, Size);
-
-    // Back substitution
-    SerialBackSubstitution (pMatrix, pVector, pResult, Size);
-
-    // Memory deallocation
-    delete [] pSerialPivotPos;
-    delete [] pSerialPivotIter;
-}
-
 // Function for memory allocation and data initialization
 void ProcessInitialization (double* &pMatrix, double* &pVector, double* &pResult, double* &pProcRows, 
 double* &pProcVector, double* &pProcResult, int &Size, int &RowNum) {
@@ -176,34 +96,52 @@ double* &pProcVector, double* &pProcResult, int &Size, int &RowNum) {
 }
 
 // Function for the data distribution among the processes
-void DataDistribution(double* pMatrix, double* pProcRows, double* pVector, double* pProcVector, int Size, int RowNum) {
-    int *pSendNum; // Number of the elements sent to the process
-    int *pSendInd; // Index of the first data element sent to the process
-    int RestRows=Size; // Number of rows, that have not been distributed yet
+void DataDistribution(double* pMatrix, double* pProcRows,
+                      double* pVector, double* pProcVector,
+                      int Size, int RowNum)
+{
+    int *pSendNum; // Number of elements sent to each process (for matrix)
+    int *pSendInd; // Starting index of data sent to each process (for matrix)
+    int *pSendNumRows; // Number of rows sent to each process (for vector)
+    int *pSendIndRows; // Starting index of data sent to each process (for vector)
+    int RestRows = Size; // Number of rows remaining to distribute
     int i; // Loop variable
 
-    // Alloc memory for temporary objects
+    // Alloc memory for temporary arrays
     pSendInd = new int [ProcNum];
     pSendNum = new int [ProcNum];
+    pSendIndRows = new int [ProcNum];
+    pSendNumRows = new int [ProcNum];
 
-    // Define the disposition of the matrix rows for the current process
-    RowNum = (Size/ProcNum);
-    pSendNum[0] = RowNum*Size;
+    // Define distribution of matrix rows among processes
+    RowNum = Size / ProcNum;
+    pSendNum[0] = RowNum * Size;
     pSendInd[0] = 0;
+    pSendNumRows[0] = RowNum;
+    pSendIndRows[0] = 0;
 
-    for (i=1; i<ProcNum; i++) {
+    for (i = 1; i < ProcNum; i++) {
         RestRows -= RowNum;
-        RowNum = RestRows/(ProcNum-i);
-        pSendNum[i] = RowNum*Size;
-        pSendInd[i] = pSendInd[i-1]+pSendNum[i-1];
+        RowNum = RestRows / (ProcNum - i);
+        pSendNum[i] = RowNum * Size;
+        pSendInd[i] = pSendInd[i - 1] + pSendNum[i - 1];
+        pSendNumRows[i] = RowNum;
+        pSendIndRows[i] = pSendIndRows[i - 1] + pSendNumRows[i - 1];
     }
 
-    // Scatter the rows
-    MPI_Scatterv(pMatrix, pSendNum, pSendInd, MPI_DOUBLE, pProcRows, pSendNum[ProcRank], MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // Scatter rows of matrix A
+    MPI_Scatterv(pMatrix, pSendNum, pSendInd, MPI_DOUBLE,
+                 pProcRows, pSendNum[ProcRank], MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    // Free the memory
+    // Scatter corresponding parts of vector B
+    MPI_Scatterv(pVector, pSendNumRows, pSendIndRows, MPI_DOUBLE,
+                 pProcVector, pSendNumRows[ProcRank], MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    // Free temporary arrays
     delete [] pSendNum;
     delete [] pSendInd;
+    delete [] pSendNumRows;
+    delete [] pSendIndRows;
 }
 
 // Function for testing the data distribution
@@ -243,18 +181,19 @@ void ParallelEliminateColumns(double* pProcRows, double* pProcVector, double* pP
 
 // Function for the Gaussian elimination
 void ParallelGaussianElimination (double* pProcRows, double* pProcVector, int Size, int RowNum) {
-    double MaxValue; // Value of the pivot element of thе process
-    int PivotPos; // Position of the pivot row in the process stripe
+    double MaxValue = 0.0; // Value of the pivot element of thе process
+    int PivotPos = -1; // Position of the pivot row in the process stripe
 
     struct { double MaxValue; int ProcRank; } ProcPivot, Pivot;
-    double *pPivotRow; // Pivot row of the current iteration
-    pPivotRow = new double [Size+1];
+    double *pPivotRow = new double [Size+1]; // Pivot row of the current iteration
 
     // The iterations of the Gaussian elimination
     for (int i=0; i<Size; i++) {
+        MaxValue = 0.0;
+        PivotPos = -1;
         // Calculating the local pivot row
         for (int j=0; j<RowNum; j++) {
-            if ((pProcPivotIter[j] == -1) && (MaxValue < fabs(pProcRows[j*Size+i]))) {
+            if ((pProcPivotIter[j] == -1) && (fabs(pProcRows[j*Size+i])>MaxValue)) {
                 MaxValue = fabs(pProcRows[j*Size+i]);
                 PivotPos = j;
             }
@@ -262,7 +201,7 @@ void ParallelGaussianElimination (double* pProcRows, double* pProcVector, int Si
 
         // Finding the global pivot row
         ProcPivot.MaxValue = MaxValue;
-        ProcPivot.ProcRank = ProcRank;
+        ProcPivot.ProcRank = (PivotPos == -1) ? -1 : ProcRank;
 
         // Finding the pivot process
         MPI_Allreduce(&ProcPivot, &Pivot, 1, MPI_DOUBLE_INT, MPI_MAXLOC, MPI_COMM_WORLD);
@@ -336,6 +275,7 @@ void ParallelResultCalculation(double* pProcRows, double* pProcVector, double* p
     // Memory allocation
     pParallelPivotPos = new int [Size];
     pProcPivotIter = new int [RowNum];
+    
     for (int i=0; i<RowNum; i++)
         pProcPivotIter[i] = -1;
 
@@ -343,17 +283,12 @@ void ParallelResultCalculation(double* pProcRows, double* pProcVector, double* p
     ParallelGaussianElimination (pProcRows, pProcVector, Size, RowNum);
     // Back substitution
     ParallelBackSubstitution (pProcRows, pProcVector, pProcResult, Size, RowNum);
-
-    // Memory deallocation
-    delete [] pParallelPivotPos;
-    delete [] pProcPivotIter;
 }
 
 // Function for gathering the result vector
 void ResultCollection(double* pProcResult, double* pResult) {
     //Gathering the result vector on the pivot processor
-    MPI_Gatherv(pProcResult, pProcNum[ProcRank], MPI_DOUBLE, pResult,
-    pProcNum, pProcInd, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(pProcResult, pProcNum[ProcRank], MPI_DOUBLE, pResult, pProcNum, pProcInd, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }
 
 // Function for formatted result vector output
@@ -400,9 +335,13 @@ double* pProcRows, double* pProcVector, double* pProcResult) {
         delete [] pResult;
     }
 
-    delete [] pProcRows;
-    delete [] pProcVector;
-    delete [] pProcResult;
+    if (pProcRows) delete [] pProcRows;
+    if (pProcVector) delete [] pProcVector;
+    if (pProcResult) delete [] pProcResult;
+    delete[] pProcInd;
+    delete[] pProcNum;
+    delete [] pParallelPivotPos;
+    delete [] pProcPivotIter;
 }
 
 int main(int argc, char* argv[]) {
@@ -426,6 +365,17 @@ int main(int argc, char* argv[]) {
 
     // Memory allocation and data initialization
     ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult, Size, RowNum);
+
+    pProcInd = new int[ProcNum];
+    pProcNum = new int[ProcNum];
+    int RestRows = Size;
+    for (int i = 0; i < ProcNum; i++) {
+        pProcNum[i] = RestRows / (ProcNum - i);
+        RestRows -= pProcNum[i];
+    }
+    pProcInd[0] = 0;
+    for (int i = 1; i < ProcNum; i++)
+        pProcInd[i] = pProcInd[i - 1] + pProcNum[i - 1];
 
     Start = MPI_Wtime();
     // Distributing the initial data between the processes
