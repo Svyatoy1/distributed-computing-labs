@@ -6,6 +6,14 @@
 #include <cmath>
 using namespace std;
 
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define CYAN    "\033[36m"
+#define GRAY    "\033[90m"
+#define BOLD    "\033[1m"
+
 int ProcNum = 0; // Number of the available processes
 int ProcRank = 0; // Rank of the current process
 
@@ -44,21 +52,33 @@ void RandomDataInitialization(double* pMatrix, double* pVector, int Size) {
     }
 }
 
-// Function for formatted matrix output
-void PrintMatrix (double* pMatrix, int RowCount, int ColCount) {
-    int i, j; // Loop variables
-    for (i=0; i<RowCount; i++) {
-            for (j=0; j<ColCount; j++)
-            printf("%7.4f ", pMatrix[i*ColCount+j]);
-            printf("\n");
+void PrintMatrix(double* pMatrix, int RowCount, int ColCount) {
+    for (int i=0; i<RowCount; i++) {
+        for (int j=0; j<ColCount; j++) {
+            double val = pMatrix[i*ColCount+j];
+            if (i == j)
+                printf(CYAN "%7.4f " RESET, val);               // diagonal
+            else if (fabs(val) < 1e-9)
+                printf(GRAY "%7.4f " RESET, val);               // near zero
+            else if (val < 0)
+                printf(RED "%7.4f " RESET, val);                // negative
+            else
+                printf("%7.4f ", val);                          // normal
+        }
+        printf("\n");
     }
 }
     
-// Function for formatted vector output
-void PrintVector (double* pVector, int Size) {
-    int i;
-    for (i=0; i<Size; i++)
-    printf("%7.4f ", pVector[i]);
+// print vector
+void PrintVector(double* pVector, int Size) {
+    for (int i=0; i<Size; i++) {
+        if (fabs(pVector[i]) < 1e-9)
+            printf(GRAY "%7.4f " RESET, pVector[i]);
+        else if (pVector[i] < 0)
+            printf(RED "%7.4f " RESET, pVector[i]);
+        else
+            printf("%7.4f ", pVector[i]);
+    }
     printf("\n");
 }
 
@@ -67,10 +87,10 @@ void ProcessInitialization (double* &pMatrix, double* &pVector, double* &pResult
 double* &pProcVector, double* &pProcResult, int &Size, int &RowNum) {
     if (ProcRank == 0) {
         do {
-            printf("\nEnter the size of the matrix and the vector: ");
+            printf(YELLOW "\nEnter the size of the matrix and the vector: " RESET);
             scanf("%d", &Size);
             if (Size < ProcNum) {
-                printf ("Size must be greater than number of processes! \n");
+                printf (RED "Size must be greater than number of processes! \n" RESET);
             }
         } while (Size < ProcNum);
     }
@@ -180,52 +200,97 @@ void ParallelEliminateColumns(double* pProcRows, double* pProcVector, double* pP
 }
 
 // Function for the Gaussian elimination
-void ParallelGaussianElimination (double* pProcRows, double* pProcVector, int Size, int RowNum) {
-    double MaxValue = 0.0; // Value of the pivot element of thе process
-    int PivotPos = -1; // Position of the pivot row in the process stripe
+void ParallelGaussianElimination(double* pProcRows, double* pProcVector, int Size, int RowNum) {
+    double MaxValue = 0.0;
+    int PivotPos = -1;
+    double LocalTime = 0.0; 
+    double IterStart, IterEnd;
 
     struct { double MaxValue; int ProcRank; } ProcPivot, Pivot;
-    double *pPivotRow = new double [Size+1]; // Pivot row of the current iteration
+    double *pPivotRow = new double [Size + 1];
 
-    // The iterations of the Gaussian elimination
-    for (int i=0; i<Size; i++) {
+    for (int i = 0; i < Size; i++) {
         MaxValue = 0.0;
         PivotPos = -1;
-        // Calculating the local pivot row
-        for (int j=0; j<RowNum; j++) {
-            if ((pProcPivotIter[j] == -1) && (fabs(pProcRows[j*Size+i])>MaxValue)) {
+        IterStart = MPI_Wtime();
+
+        // iteration start
+        if (ProcRank == 0)
+            printf(YELLOW BOLD "\n🔄 Iteration %d started\n" RESET, i);
+
+        // local search of pivot
+        for (int j = 0; j < RowNum; j++) {
+            if ((pProcPivotIter[j] == -1) && (fabs(pProcRows[j*Size+i]) > MaxValue)) {
                 MaxValue = fabs(pProcRows[j*Size+i]);
                 PivotPos = j;
             }
         }
 
-        // Finding the global pivot row
+        if (PivotPos != -1) {
+            printf(CYAN "Proc %d found local pivot %.4f at local row %d\n" RESET,
+                   ProcRank, MaxValue, PivotPos);
+        }
+
         ProcPivot.MaxValue = MaxValue;
         ProcPivot.ProcRank = (PivotPos == -1) ? -1 : ProcRank;
 
-        // Finding the pivot process
         MPI_Allreduce(&ProcPivot, &Pivot, 1, MPI_DOUBLE_INT, MPI_MAXLOC, MPI_COMM_WORLD);
 
-        // Storing the number of the pivot row
-        if ( ProcRank == Pivot.ProcRank ){
-            pProcPivotIter[PivotPos]= i;
-            pParallelPivotPos[i]= pProcInd[ProcRank] + PivotPos;
+        // глобальний півот
+        if (ProcRank == 0)
+            printf(GREEN " Global pivot: process %d (value %.4f)\n" RESET, Pivot.ProcRank, Pivot.MaxValue);
+
+        // saving pivot number
+        if (ProcRank == Pivot.ProcRank) {
+            pProcPivotIter[PivotPos] = i;
+            pParallelPivotPos[i] = pProcInd[ProcRank] + PivotPos;
         }
         MPI_Bcast(&pParallelPivotPos[i], 1, MPI_INT, Pivot.ProcRank, MPI_COMM_WORLD);
 
-        // Broadcasting the pivot row
-        if ( ProcRank == Pivot.ProcRank ){
-            // Fill the pivot row
-            for (int j=0; j<Size; j++) {
-                pPivotRow[j] = pProcRows[PivotPos*Size + j];
-            }
+        // pivot row broadcast
+        if (ProcRank == Pivot.ProcRank) {
+            for (int j = 0; j < Size; j++)
+                pPivotRow[j] = pProcRows[PivotPos * Size + j];
             pPivotRow[Size] = pProcVector[PivotPos];
         }
-        MPI_Bcast(pPivotRow, Size+1, MPI_DOUBLE, Pivot.ProcRank, MPI_COMM_WORLD);
+        MPI_Bcast(pPivotRow, Size + 1, MPI_DOUBLE, Pivot.ProcRank, MPI_COMM_WORLD);
 
-        // Column elimination
-        ParallelEliminateColumns(pProcRows, pProcVector, pPivotRow, Size, RowNum, i);
+        // elimination
+        for (int r = 0; r < RowNum; r++) {
+            if (pProcPivotIter[r] == -1) {
+                double factor = pProcRows[r*Size+i] / pPivotRow[i];
+                for (int c = i; c < Size; c++)
+                    pProcRows[r*Size+c] -= factor * pPivotRow[c];
+                pProcVector[r] -= factor * pPivotRow[Size];
+            }
+        }
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        IterEnd = MPI_Wtime();
+        LocalTime += (IterEnd - IterStart);
+
+        if (ProcRank == 0)
+            printf(GRAY "Iteration %d completed (%.6f s)\n" RESET, i, IterEnd - IterStart);
     }
+
+    // final output
+    double TotalTime;
+    MPI_Reduce(&LocalTime, &TotalTime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    printf(BOLD "\n-rocess %d summary\n" RESET, ProcRank);
+    printf("  Rows processed: %d\n", RowNum);
+    printf("  Local time: %.6f s\n", LocalTime);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (ProcRank == 0) {
+        printf(BOLD CYAN "\nGlobal Summary\n" RESET);
+        printf("  Total time across all processes: %.6f s\n", TotalTime);
+        printf("  Average per process: %.6f s\n", TotalTime / ProcNum);
+        printf("  Processes used: %d\n", ProcNum);
+        printf(BOLD GREEN "---------------------------\n\n" RESET);
+    }
+
     delete [] pPivotRow;
 }
 
@@ -319,9 +384,9 @@ void TestResult(double* pMatrix, double* pVector, double* pResult, int Size) {
                 equal = 1;
         }
         if (equal == 1)
-            printf("The result of the parallel Gauss algorithm is NOT correct. Check your code.");
+            printf(RED BOLD "The result of the parallel Gauss algorithm is NOT correct. Check your code." RESET);
         else
-            printf("The result of the parallel Gauss algorithm is correct.");
+            printf(GREEN BOLD "The result of the parallel Gauss algorithm is correct." RESET);
         delete [] pRightPartVector;
     }
 }
@@ -361,7 +426,7 @@ int main(int argc, char* argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);
 
     if (ProcRank == 0)
-        printf("Parallel Gauss algorithm for solving linear systems\n");
+        printf(GREEN BOLD "Parallel Gauss algorithm for solving linear systems\n" RESET);
 
     // Memory allocation and data initialization
     ProcessInitialization(pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult, Size, RowNum);
@@ -396,6 +461,9 @@ int main(int argc, char* argv[]) {
     // Printing the time spent by parallel Gauss algorithm
     if (ProcRank == 0)
         printf("\n Time of execution: %f\n", Duration);
+
+    // Distributing the initial data between the processes
+    TestDistribution(pMatrix, pProcRows, pVector, pProcVector, Size, RowNum);
 
     // Process termination
     ProcessTermination (pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult);
