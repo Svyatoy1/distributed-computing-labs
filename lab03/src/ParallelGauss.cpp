@@ -279,15 +279,15 @@ void ParallelGaussianElimination(double* pProcRows, double* pProcVector, int Siz
     MPI_Barrier(MPI_COMM_WORLD);
 
     printf(BOLD "\nProcess %d summary\n" RESET, ProcRank);
-    printf("  Rows processed: %d\n", RowNum);
-    printf("  Local time: %.6f s\n", LocalTime);
+    printf(" Rows processed: %d\n", RowNum);
+    printf(" Local time: %.6f s\n", LocalTime);
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (ProcRank == 0) {
         printf(BOLD CYAN "\nGlobal Summary\n" RESET);
-        printf("  Total time across all processes: %.6f s\n", TotalTime);
-        printf("  Average per process: %.6f s\n", TotalTime / ProcNum);
-        printf("  Processes used: %d\n", ProcNum);
+        printf(" Total time across all processes: %.6f s\n", TotalTime);
+        printf(" Average per process: %.6f s\n", TotalTime / ProcNum);
+        printf(" Processes used: %d\n", ProcNum);
         printf(BOLD GREEN "---------------------------\n\n" RESET);
     }
 
