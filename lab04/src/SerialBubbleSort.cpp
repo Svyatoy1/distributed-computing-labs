@@ -11,5 +11,4 @@ int DataSize; // Size of data to be sorted
 
 int main() {
     cout << "Serial bubble sort program \n";
-    return 0;
 }
