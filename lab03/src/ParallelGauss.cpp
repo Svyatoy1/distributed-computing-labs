@@ -278,7 +278,7 @@ void ParallelGaussianElimination(double* pProcRows, double* pProcVector, int Siz
     MPI_Reduce(&LocalTime, &TotalTime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Barrier(MPI_COMM_WORLD);
 
-    printf(BOLD "\n-rocess %d summary\n" RESET, ProcRank);
+    printf(BOLD "\nProcess %d summary\n" RESET, ProcRank);
     printf("  Rows processed: %d\n", RowNum);
     printf("  Local time: %.6f s\n", LocalTime);
 
