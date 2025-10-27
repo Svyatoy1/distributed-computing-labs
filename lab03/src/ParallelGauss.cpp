@@ -111,7 +111,7 @@ double* &pProcVector, double* &pProcResult, int &Size, int &RowNum) {
         pVector = new double [Size];
         pResult = new double [Size];
         // Initialization of the matrix and the vector elements
-        DummyDataInitialization (pMatrix, pVector, Size);
+        RandomDataInitialization (pMatrix, pVector, Size);
     }
 }
 
@@ -216,7 +216,7 @@ void ParallelGaussianElimination(double* pProcRows, double* pProcVector, int Siz
 
         // iteration start
         if (ProcRank == 0)
-            printf(YELLOW BOLD "\n🔄 Iteration %d started\n" RESET, i);
+            printf(YELLOW BOLD "\n Iteration %d started\n" RESET, i);
 
         // local search of pivot
         for (int j = 0; j < RowNum; j++) {
