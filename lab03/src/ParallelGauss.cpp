@@ -168,18 +168,18 @@ void DataDistribution(double* pMatrix, double* pProcRows,
 void TestDistribution(double* pMatrix, double* pVector, double* pProcRows, double* pProcVector, int Size, int RowNum) {
     if (ProcRank == 0) {
         printf("Initial Matrix: \n");
-        PrintMatrix(pMatrix, Size, Size);
+        //PrintMatrix(pMatrix, Size, Size);
         printf("Initial Vector: \n");
-        PrintVector(pVector, Size);
+        //PrintVector(pVector, Size);
     }
 
     for (int i=0; i<ProcNum; i++) {
         if (ProcRank == i) {
             printf("\nProcRank = %d \n", ProcRank);
             printf(" Matrix Stripe:\n");
-            PrintMatrix(pProcRows, RowNum, Size);
+            //PrintMatrix(pProcRows, RowNum, Size);
             printf(" Vector: \n");
-            PrintVector(pProcVector, RowNum);
+            //PrintVector(pProcVector, RowNum);
         }
         MPI_Barrier(MPI_COMM_WORLD);
     }
@@ -463,7 +463,7 @@ int main(int argc, char* argv[]) {
         printf("\n Time of execution: %f\n", Duration);
 
     // Distributing the initial data between the processes
-    TestDistribution(pMatrix, pProcRows, pVector, pProcVector, Size, RowNum);
+    //TestDistribution(pMatrix, pProcRows, pVector, pProcVector, Size, RowNum);
 
     // Process termination
     ProcessTermination (pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult);
