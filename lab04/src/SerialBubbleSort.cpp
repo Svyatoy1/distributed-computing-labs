@@ -8,11 +8,19 @@ using namespace std;
 
 double *pData; // Data to be sorted
 int DataSize; // Size of data to be sorted
+const double RandomDataMultiplier = 1000.0;
 
 // Function for simple setting the initial data
 void DummyDataInitialization(double*& pData, int& DataSize) {
     for(int i = 0; i < DataSize; i++)
         pData[i] = DataSize - i;
+}
+
+// Function for initializing the data by the random generator
+void RandomDataInitialization(double *&pData, int& DataSize) {
+    srand( (unsigned)time(0) );
+    for(int i = 0; i < DataSize; i++)
+    pData[i] = double(rand()) / RAND_MAX * RandomDataMultiplier;
 }
 
 // Function for the serial bubble sort algorithm
@@ -45,7 +53,8 @@ void ProcessInitialization(double *&pData, int& DataSize) {
     printf("Sorting %d data items\n", DataSize);
 
     pData = new double[DataSize];
-    DummyDataInitialization(pData, DataSize);
+    //DummyDataInitialization(pData, DataSize);
+    RandomDataInitialization(pData, DataSize);
 }
 
 // Function for computational process termination
@@ -54,8 +63,13 @@ void ProcessTermination(double *pData) {
 }
 
 int main() {
+    double *pData = 0;
+    int DataSize = 0;
+    time_t start, finish;
+    double duration = 0.0;
+
     printf("Serial bubble sort program\n");
-    
+
     // Process initialization
     ProcessInitialization(pData, DataSize);
 
@@ -63,10 +77,15 @@ int main() {
     PrintData(pData, DataSize);
 
     // Serial bubble sort
+    start = clock();
     SerialBubble(pData, DataSize);
+    finish = clock();
 
     printf("Data after sorting\n");
     PrintData(pData, DataSize);
+
+    duration = (finish - start) / double(CLOCKS_PER_SEC);
+    printf("Time of execution: %f\n", duration);
 
     // Process termination
     ProcessTermination(pData);
