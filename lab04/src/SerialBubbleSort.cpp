@@ -15,6 +15,18 @@ void DummyDataInitialization(double*& pData, int& DataSize) {
         pData[i] = DataSize - i;
 }
 
+// Function for the serial bubble sort algorithm
+void SerialBubble(double *pData, int DataSize) {
+    double Tmp;
+    for(int i = 1; i < DataSize; i++)
+        for(int j = 0; j < DataSize - i; j++)
+            if(pData[j] > pData[j + 1]) {
+                Tmp = pData[j];
+                pData[j] = pData[j + 1];
+                pData[j + 1] = Tmp;
+        }
+}
+
 // Function for formatted data output
 void PrintData(double *pData, int DataSize) {
     for(int i = 0; i < DataSize; i++)
@@ -43,10 +55,17 @@ void ProcessTermination(double *pData) {
 
 int main() {
     printf("Serial bubble sort program\n");
+    
     // Process initialization
     ProcessInitialization(pData, DataSize);
 
     printf("Data before sorting\n");
+    PrintData(pData, DataSize);
+
+    // Serial bubble sort
+    SerialBubble(pData, DataSize);
+
+    printf("Data after sorting\n");
     PrintData(pData, DataSize);
 
     // Process termination
