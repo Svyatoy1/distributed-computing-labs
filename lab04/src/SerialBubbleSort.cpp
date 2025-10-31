@@ -36,6 +36,11 @@ void ProcessInitialization(double *&pData, int& DataSize) {
     DummyDataInitialization(pData, DataSize);
 }
 
+// Function for computational process termination
+void ProcessTermination(double *pData) {
+    delete []pData;
+}
+
 int main() {
     printf("Serial bubble sort program\n");
     // Process initialization
@@ -44,4 +49,7 @@ int main() {
     printf("Data before sorting\n");
     PrintData(pData, DataSize);
 
+    // Process termination
+    ProcessTermination(pData);
+    return 0;
 }
