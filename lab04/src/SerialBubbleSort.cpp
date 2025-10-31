@@ -1,5 +1,5 @@
 #include <iostream>
-#include <iomanip>
+#include <algorithm>
 #include <ctime> // для функцій clock_t, clock, CLOCKS_PER_SEC
 #include <cstdlib>
 #include <limits>
@@ -21,6 +21,11 @@ void RandomDataInitialization(double *&pData, int& DataSize) {
     srand( (unsigned)time(0) );
     for(int i = 0; i < DataSize; i++)
     pData[i] = double(rand()) / RAND_MAX * RandomDataMultiplier;
+}
+
+// Function for sorting by the standard library algorithm
+void SerialStdSort(double *pData, int DataSize) {
+    sort(pData, pData + DataSize);
 }
 
 // Function for the serial bubble sort algorithm
@@ -73,16 +78,17 @@ int main() {
     // Process initialization
     ProcessInitialization(pData, DataSize);
 
-    printf("Data before sorting\n");
-    PrintData(pData, DataSize);
+    //printf("Data before sorting\n");
+    //PrintData(pData, DataSize);
 
     // Serial bubble sort
     start = clock();
-    SerialBubble(pData, DataSize);
+    //SerialBubble(pData, DataSize);
+    SerialStdSort(pData, DataSize);
     finish = clock();
 
-    printf("Data after sorting\n");
-    PrintData(pData, DataSize);
+    //printf("Data after sorting\n");
+    //PrintData(pData, DataSize);
 
     duration = (finish - start) / double(CLOCKS_PER_SEC);
     printf("Time of execution: %f\n", duration);
