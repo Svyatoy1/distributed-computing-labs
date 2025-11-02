@@ -46,7 +46,7 @@ void ProcessInitialization(double *&pData, int& DataSize, double *&pProcData, in
     pProcData = new double[BlockSize];
     if (ProcRank == 0) {
         pData = new double[DataSize];
-        
+
     // Data initalization
     DummyDataInitialization(pData, DataSize);
     }
@@ -57,6 +57,12 @@ void PrintData(double *pData, int DataSize) {
     for(int i = 0; i < DataSize; i++)
         printf("%7.4f ", pData[i]);
     printf("\n");
+}
+
+// Function for computational process termination
+void ProcessTermination(double *pData, double *pProcData) {
+    if(ProcRank == 0) delete []pData;
+        delete []pProcData;
 }
 
 int main (int argc, char* argv[]) {
@@ -74,6 +80,9 @@ int main (int argc, char* argv[]) {
 
     // Process initialization
     ProcessInitialization(pData, DataSize, pProcData, BlockSize);
+
+    // Process termination
+    ProcessTermination(pData, pProcData);
 
     MPI_Finalize();
     return 0;
