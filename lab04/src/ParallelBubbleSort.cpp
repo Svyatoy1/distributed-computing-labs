@@ -5,6 +5,9 @@
 #include <cmath>
 #include <algorithm>
 #include <mpi.h>
+using namespace std;
+
+enum split_mode { KeepFirstHalf, KeepSecondHalf };
 
 int ProcNum = 0; // Number of available processes
 int ProcRank = -1; // Rank of current process
@@ -120,14 +123,24 @@ void ParallelBubble(double *pProcData, int BlockSize) {
     SerialBubbleSort(pProcData, BlockSize);
 
     double *pDualData = new double[BlockSize];
+    double *pMergedData = new double[2 * BlockSize];
     int Offset;
+    split_mode SplitMode = KeepFirstHalf;
 
     if(ProcRank != 0) {
         Offset = -1;
         ExchangeData(pProcData, BlockSize, ProcRank + Offset, pDualData);
+        // Data merging
+        merge(pProcData, pProcData + BlockSize, pDualData, pDualData + BlockSize, pMergedData);
+        // Data splitting
+        if(SplitMode == KeepFirstHalf)
+            copy(pMergedData, pMergedData + BlockSize, pProcData);
+        else
+            copy(pMergedData + BlockSize, pMergedData + 2*BlockSize, pProcData);
     }
-    
+
     delete []pDualData;
+    delete []pMergedData;
 
     // Print the sorted data
     ParallelPrintData(pProcData, BlockSize);
