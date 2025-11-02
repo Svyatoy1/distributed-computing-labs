@@ -91,15 +91,15 @@ void DataDistribution(double *pData, int DataSize, double *pProcData, int BlockS
 void TestDistribution(double *pData, int DataSize, double *pProcData, int BlockSize) {
     MPI_Barrier(MPI_COMM_WORLD);
     if (ProcRank == 0) {
-        printf("Initial data:\n");
-        PrintData(pData, DataSize);
+        //printf("Initial data:\n");
+        //PrintData(pData, DataSize);
     }
     MPI_Barrier(MPI_COMM_WORLD);
     for (int i = 0; i < ProcNum; i++) {
         if (ProcRank == i) {
-            printf("ProcRank = %d\n", ProcRank);
-            printf("Block:\n");
-            PrintData(pProcData, BlockSize);
+            //printf("ProcRank = %d\n", ProcRank);
+            //printf("Block:\n");
+            //PrintData(pProcData, BlockSize);
         }
         MPI_Barrier(MPI_COMM_WORLD);
     }
@@ -278,14 +278,14 @@ int main (int argc, char* argv[]) {
     // Distributing the initial data among processes
     DataDistribution(pData, DataSize, pProcData, BlockSize);
     // Testing the data distribution
-    TestDistribution(pData, DataSize, pProcData, BlockSize);
+    //TestDistribution(pData, DataSize, pProcData, BlockSize);
 
     // Parallel bubble sort
     ParallelBubble(pProcData, BlockSize);
-    ParallelPrintData(pProcData, BlockSize);
+    //ParallelPrintData(pProcData, BlockSize);
     // Execution of data collection
     DataCollection(pData, DataSize, pProcData, BlockSize);
-    TestResult(pData, pSerialData, DataSize);
+    //TestResult(pData, pSerialData, DataSize);
     finish = MPI_Wtime();
     duration = finish - start;
 
