@@ -44,7 +44,10 @@ void ProcessInitialization(double *&pData, int& DataSize, double *&pProcData, in
     }
     // Broadcasting the data size
     MPI_Bcast(&DataSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    BlockSize = DataSize / ProcNum;
+    int RestData = DataSize;
+    for(int i = 0; i < ProcRank; i++)
+        RestData -= RestData / (ProcNum - i);
+    BlockSize = RestData / (ProcNum - ProcRank);
 
     pProcData = new double[BlockSize];
     if (ProcRank == 0) {
@@ -64,7 +67,24 @@ void PrintData(double *pData, int DataSize) {
 
 // Data distribution among the processes
 void DataDistribution(double *pData, int DataSize, double *pProcData, int BlockSize) {
-    MPI_Scatter(pData, BlockSize, MPI_DOUBLE, pProcData, BlockSize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // Allocate memory for temporary objects
+    int *pSendInd = new int[ProcNum];
+    int *pSendNum = new int[ProcNum];
+    int RestData = DataSize;
+    int CurrentSize = DataSize / ProcNum;
+
+    pSendNum[0] = CurrentSize;
+    pSendInd[0] = 0;
+    for(int i = 1; i < ProcNum; i++) {
+        RestData -= CurrentSize;
+        CurrentSize = RestData / (ProcNum - i);
+        pSendNum[i] = CurrentSize;
+        pSendInd[i] = pSendInd[i - 1] + pSendNum[i - 1];
+    }
+    MPI_Scatterv(pData, pSendNum, pSendInd, MPI_DOUBLE, pProcData, pSendNum[ProcRank], MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // Free the memory
+    delete [] pSendNum;
+    delete [] pSendInd;
 }
 
 // Function for testing the data distribution
@@ -111,23 +131,21 @@ void ParallelPrintData(double *pProcData, int BlockSize) {
 }
 
 // Function for data exchange between the neighboring processes
-void ExchangeData(double *pProcData, int BlockSize, int DualRank, double *pDualData) {
+void ExchangeData(double *pProcData, int BlockSize, int DualRank, double *pDualData, int DualBlockSize) {
     MPI_Status status;
-    MPI_Sendrecv(pProcData, BlockSize, MPI_DOUBLE, DualRank, 0, pDualData, BlockSize, 
-    MPI_DOUBLE, DualRank, 0, MPI_COMM_WORLD, &status);
+    MPI_Sendrecv(pProcData, BlockSize, MPI_DOUBLE, DualRank, 0,
+    pDualData, DualBlockSize, MPI_DOUBLE, DualRank, 0,
+    MPI_COMM_WORLD, &status);
 }
 
 // Parallel bubble sort algorithm
 void ParallelBubble(double *pProcData, int BlockSize) {
     // Local sorting the process data
     SerialBubbleSort(pProcData, BlockSize);
-
-    double *pDualData = new double[BlockSize];
-    double *pMergedData = new double[2 * BlockSize];
     int Offset;
-    split_mode SplitMode = KeepFirstHalf;
+    split_mode SplitMode;
 
-    for(int i = 0; i < 2 * ProcNum; i++) {
+    for(int i = 0; i < ProcNum; i++) {
         if((i % 2) == 1) {
             if((ProcRank % 2) == 1) {
                 Offset = 1;
@@ -148,30 +166,55 @@ void ParallelBubble(double *pProcData, int BlockSize) {
                 SplitMode = KeepFirstHalf;
             }
         }
+
         // Check the first and last processes
         if((ProcRank == ProcNum - 1) && (Offset == 1)) continue;
         if((ProcRank == 0 ) && (Offset == -1)) continue;
+        MPI_Status status;
+        int DualBlockSize;
 
-        ExchangeData(pProcData, BlockSize, ProcRank + Offset, pDualData);
+        MPI_Sendrecv(&BlockSize, 1, MPI_INT, ProcRank + Offset, 0, &DualBlockSize, 1, MPI_INT, ProcRank + Offset, 0,
+        MPI_COMM_WORLD, &status);
+        double *pDualData = new double[DualBlockSize];
+        double *pMergedData = new double[BlockSize + DualBlockSize];
+
+        // Data exchange
+        ExchangeData(pProcData, BlockSize, ProcRank + Offset, pDualData,
+        DualBlockSize);
+
         // Data merging
-        merge(pProcData, pProcData + BlockSize, pDualData, pDualData + BlockSize, pMergedData);
+        merge(pProcData, pProcData + BlockSize, pDualData, pDualData +
+        DualBlockSize, pMergedData);
+
         // Data splitting
         if(SplitMode == KeepFirstHalf)
             copy(pMergedData, pMergedData + BlockSize, pProcData);
         else
-            copy(pMergedData + BlockSize, pMergedData + 2*BlockSize, pProcData);
+            copy(pMergedData + BlockSize, pMergedData + BlockSize + DualBlockSize, pProcData);
+        delete []pDualData;
+        delete []pMergedData;
     }
-
-    delete []pDualData;
-    delete []pMergedData;
-
-    // Print the sorted data
-    ParallelPrintData(pProcData, BlockSize);
 }
 
 // Function for data collection
 void DataCollection(double *pData, int DataSize, double *pProcData, int BlockSize) {
-    MPI_Gather(pProcData, BlockSize, MPI_DOUBLE, pData, BlockSize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // Allocate memory for temporary objects
+    int *pReceiveNum = new int[ProcNum];
+    int *pReceiveInd = new int[ProcNum];
+    int RestData = DataSize;
+    pReceiveInd[0] = 0;
+    pReceiveNum[0] = DataSize / ProcNum;
+
+    for(int i = 1; i < ProcNum; i++) {
+        RestData -= pReceiveNum[i - 1];
+        pReceiveNum[i] = RestData / (ProcNum - i);
+        pReceiveInd[i] = pReceiveInd[i - 1] + pReceiveNum[i - 1];
+    }
+
+    MPI_Gatherv(pProcData, BlockSize, MPI_DOUBLE, pData, pReceiveNum, pReceiveInd, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // Free the memory
+    delete []pReceiveNum;
+    delete []pReceiveInd;
 }
 
 // Function for copying the sorted data
@@ -220,6 +263,8 @@ int main (int argc, char* argv[]) {
     if (ProcRank == 0)
         printf("Parallel bubble sort program\n");
 
+    double start, finish, duration;
+
     // Process initialization
     ProcessInitialization(pData, DataSize, pProcData, BlockSize);
 
@@ -229,6 +274,7 @@ int main (int argc, char* argv[]) {
         CopyData(pData, DataSize, pSerialData);
     }
 
+    start = MPI_Wtime();
     // Distributing the initial data among processes
     DataDistribution(pData, DataSize, pProcData, BlockSize);
     // Testing the data distribution
@@ -240,12 +286,17 @@ int main (int argc, char* argv[]) {
     // Execution of data collection
     DataCollection(pData, DataSize, pProcData, BlockSize);
     TestResult(pData, pSerialData, DataSize);
+    finish = MPI_Wtime();
+    duration = finish - start;
 
-    // Process termination
-    ProcessTermination(pData, pProcData);
+    if(ProcRank == 0)
+        printf("Time of execution: %f\n", duration);
 
     if (ProcRank == 0)
         delete []pSerialData;
+
+    // Process termination
+    ProcessTermination(pData, pProcData);
 
     MPI_Finalize();
     return 0;
