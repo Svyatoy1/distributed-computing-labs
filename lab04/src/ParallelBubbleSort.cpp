@@ -169,6 +169,11 @@ void ParallelBubble(double *pProcData, int BlockSize) {
     ParallelPrintData(pProcData, BlockSize);
 }
 
+// Function for data collection
+void DataCollection(double *pData, int DataSize, double *pProcData, int BlockSize) {
+    MPI_Gather(pProcData, BlockSize, MPI_DOUBLE, pData, BlockSize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+}
+
 // Function for computational process termination
 void ProcessTermination(double *pData, double *pProcData) {
     if(ProcRank == 0) delete []pData;
@@ -199,6 +204,8 @@ int main (int argc, char* argv[]) {
     // Parallel bubble sort
     ParallelBubble(pProcData, BlockSize);
     ParallelPrintData(pProcData, BlockSize);
+    // Execution of data collection
+    DataCollection(pData, DataSize, pProcData, BlockSize);
 
     // Process termination
     ProcessTermination(pData, pProcData);
