@@ -174,6 +174,32 @@ void DataCollection(double *pData, int DataSize, double *pProcData, int BlockSiz
     MPI_Gather(pProcData, BlockSize, MPI_DOUBLE, pData, BlockSize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }
 
+// Function for copying the sorted data
+void CopyData(double *pData, int DataSize, double *pDataCopy) {
+    copy(pData, pData + DataSize, pDataCopy);
+}
+
+// Function for comparing the data
+bool CompareData(double *pData1, double *pData2, int DataSize) {
+    return equal(pData1, pData1 + DataSize, pData2);
+}
+
+// Function for testing the result of parallel bubble sort
+void TestResult(double *pData, double *pSerialData, int DataSize) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(ProcRank == 0) {
+        SerialBubbleSort(pSerialData, DataSize);
+        if(!CompareData(pData, pSerialData, DataSize)) {
+            printf("The results of serial and parallel algorithms are "
+            "NOT identical. Check your code\n");
+        }
+        else {
+            printf("The results of serial and parallel algorithms are "
+            "identical\n");
+        }
+    }
+}
+
 // Function for computational process termination
 void ProcessTermination(double *pData, double *pProcData) {
     if(ProcRank == 0) delete []pData;
@@ -183,6 +209,7 @@ void ProcessTermination(double *pData, double *pProcData) {
 int main (int argc, char* argv[]) {
     double *pData = 0;
     double *pProcData = 0;
+    double *pSerialData = 0;
     int DataSize = 0;
     int BlockSize = 0;
 
@@ -196,6 +223,12 @@ int main (int argc, char* argv[]) {
     // Process initialization
     ProcessInitialization(pData, DataSize, pProcData, BlockSize);
 
+    if (ProcRank == 0) {
+        // Data copying
+        pSerialData = new double[DataSize];
+        CopyData(pData, DataSize, pSerialData);
+    }
+
     // Distributing the initial data among processes
     DataDistribution(pData, DataSize, pProcData, BlockSize);
     // Testing the data distribution
@@ -206,9 +239,13 @@ int main (int argc, char* argv[]) {
     ParallelPrintData(pProcData, BlockSize);
     // Execution of data collection
     DataCollection(pData, DataSize, pProcData, BlockSize);
+    TestResult(pData, pSerialData, DataSize);
 
     // Process termination
     ProcessTermination(pData, pProcData);
+
+    if (ProcRank == 0)
+        delete []pSerialData;
 
     MPI_Finalize();
     return 0;
