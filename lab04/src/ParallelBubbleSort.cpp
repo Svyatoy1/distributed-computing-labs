@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <mpi.h>
 
+int ProcNum = 0; // Number of available processes
+int ProcRank = -1; // Rank of current process
 const double RandomDataMultiplier = 1000.0;
 
 // Function for simple setting the initial data
@@ -28,7 +30,16 @@ void PrintData(double *pData, int DataSize) {
     printf("\n");
 }
 
-int main() {
+int main (int argc, char* argv[]) {
+    double *pData = 0;
+    double *pProcData = 0;
+    int DataSize = 0;
+    int BlockSize = 0;
+    
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &ProcNum);
+    MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);
     printf("Parallel bubble sort program\n");
+    MPI_Finalize();
     return 0;
 }
