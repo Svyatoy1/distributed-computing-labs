@@ -14,3 +14,7 @@
 | 5     | 30,000      | 2.503198             | 0.006534
 | 6     | 40,000      | 4.695313             | 0.009103
 | 7     | 50,000      | 7.653179             | 0.009725
+
+# EXERCISE 4
+Запускаємо програму в наступній послідовності:
+`mpic++ src/ParallelBubbleSort.cpp -o ParallelBubbleSort`, `mpirun -np 1 ./ParallelBubbleSort`, `mpirun --oversubscribe -np 8 ./ParallelBubbleSort`
