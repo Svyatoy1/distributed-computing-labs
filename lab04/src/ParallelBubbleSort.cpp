@@ -59,6 +59,29 @@ void PrintData(double *pData, int DataSize) {
     printf("\n");
 }
 
+// Data distribution among the processes
+void DataDistribution(double *pData, int DataSize, double *pProcData, int BlockSize) {
+    MPI_Scatter(pData, BlockSize, MPI_DOUBLE, pProcData, BlockSize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+}
+
+// Function for testing the data distribution
+void TestDistribution(double *pData, int DataSize, double *pProcData, int BlockSize) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (ProcRank == 0) {
+        printf("Initial data:\n");
+        PrintData(pData, DataSize);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    for (int i = 0; i < ProcNum; i++) {
+        if (ProcRank == i) {
+            printf("ProcRank = %d\n", ProcRank);
+            printf("Block:\n");
+            PrintData(pProcData, BlockSize);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+}
+
 // Function for computational process termination
 void ProcessTermination(double *pData, double *pProcData) {
     if(ProcRank == 0) delete []pData;
@@ -80,6 +103,11 @@ int main (int argc, char* argv[]) {
 
     // Process initialization
     ProcessInitialization(pData, DataSize, pProcData, BlockSize);
+
+    // Distributing the initial data among processes
+    DataDistribution(pData, DataSize, pProcData, BlockSize);
+    // Testing the data distribution
+    TestDistribution(pData, DataSize, pProcData, BlockSize);
 
     // Process termination
     ProcessTermination(pData, pProcData);
