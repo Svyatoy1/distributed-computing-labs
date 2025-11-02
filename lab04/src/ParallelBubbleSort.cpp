@@ -107,10 +107,28 @@ void ParallelPrintData(double *pProcData, int BlockSize) {
     }
 }
 
+// Function for data exchange between the neighboring processes
+void ExchangeData(double *pProcData, int BlockSize, int DualRank, double *pDualData) {
+    MPI_Status status;
+    MPI_Sendrecv(pProcData, BlockSize, MPI_DOUBLE, DualRank, 0, pDualData, BlockSize, 
+    MPI_DOUBLE, DualRank, 0, MPI_COMM_WORLD, &status);
+}
+
 // Parallel bubble sort algorithm
 void ParallelBubble(double *pProcData, int BlockSize) {
     // Local sorting the process data
     SerialBubbleSort(pProcData, BlockSize);
+
+    double *pDualData = new double[BlockSize];
+    int Offset;
+
+    if(ProcRank != 0) {
+        Offset = -1;
+        ExchangeData(pProcData, BlockSize, ProcRank + Offset, pDualData);
+    }
+    
+    delete []pDualData;
+
     // Print the sorted data
     ParallelPrintData(pProcData, BlockSize);
 }
