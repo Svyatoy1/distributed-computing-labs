@@ -82,6 +82,39 @@ void TestDistribution(double *pData, int DataSize, double *pProcData, int BlockS
     }
 }
 
+// Serial bubble sort algorithm
+void SerialBubbleSort(double *pData, int DataSize) {
+    double Tmp;
+    for(int i = 1; i < DataSize; i++)
+        for(int j = 0; j < DataSize - i; j++)
+            if(pData[j] > pData[j + 1]) {
+                Tmp = pData[j];
+                pData[j] = pData[j + 1];
+                pData[j + 1] = Tmp;
+            }
+}
+
+// Function for parallel data output
+void ParallelPrintData(double *pProcData, int BlockSize) {
+    // Print the sorted data
+    for(int i = 0; i < ProcNum; i++) {
+        if (ProcRank == i) {
+            printf("ProcRank = %d\n", ProcRank);
+            printf("Proc sorted data:\n");
+            PrintData(pProcData, BlockSize);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+}
+
+// Parallel bubble sort algorithm
+void ParallelBubble(double *pProcData, int BlockSize) {
+    // Local sorting the process data
+    SerialBubbleSort(pProcData, BlockSize);
+    // Print the sorted data
+    ParallelPrintData(pProcData, BlockSize);
+}
+
 // Function for computational process termination
 void ProcessTermination(double *pData, double *pProcData) {
     if(ProcRank == 0) delete []pData;
