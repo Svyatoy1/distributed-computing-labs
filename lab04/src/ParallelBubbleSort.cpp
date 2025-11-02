@@ -127,8 +127,31 @@ void ParallelBubble(double *pProcData, int BlockSize) {
     int Offset;
     split_mode SplitMode = KeepFirstHalf;
 
-    if(ProcRank != 0) {
-        Offset = -1;
+    for(int i = 0; i < 2 * ProcNum; i++) {
+        if((i % 2) == 1) {
+            if((ProcRank % 2) == 1) {
+                Offset = 1;
+                SplitMode = KeepFirstHalf;
+            }
+            else {
+                Offset = -1;
+                SplitMode = KeepSecondHalf;
+            }
+        }
+        else {
+            if((ProcRank % 2) == 1) {
+                Offset = -1;
+                SplitMode = KeepSecondHalf;
+            }
+            else {
+                Offset = 1;
+                SplitMode = KeepFirstHalf;
+            }
+        }
+        // Check the first and last processes
+        if((ProcRank == ProcNum - 1) && (Offset == 1)) continue;
+        if((ProcRank == 0 ) && (Offset == -1)) continue;
+
         ExchangeData(pProcData, BlockSize, ProcRank + Offset, pDualData);
         // Data merging
         merge(pProcData, pProcData + BlockSize, pDualData, pDualData + BlockSize, pMergedData);
@@ -172,6 +195,10 @@ int main (int argc, char* argv[]) {
     DataDistribution(pData, DataSize, pProcData, BlockSize);
     // Testing the data distribution
     TestDistribution(pData, DataSize, pProcData, BlockSize);
+
+    // Parallel bubble sort
+    ParallelBubble(pProcData, BlockSize);
+    ParallelPrintData(pProcData, BlockSize);
 
     // Process termination
     ProcessTermination(pData, pProcData);
