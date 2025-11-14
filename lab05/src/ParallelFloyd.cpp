@@ -62,7 +62,7 @@ int Min(int A, int B) {
 void PrintMatrix(int *pMatrix, int RowCount, int ColCount) {
     for(int i = 0; i < RowCount; i++) {
         for(int j = 0; j < ColCount; j++)
-            printf("%7d", pMatrix[i * ColCount + j]);
+            printf("%12d", pMatrix[i * ColCount + j]);
         printf("\n");
     }
 }
@@ -144,7 +144,7 @@ void RowDistribution(int *pProcRows, int Size, int RowNum, int k, int *pRow) {
     if(ProcRowRank == ProcRank)
         // Copy the row to pRow array
         copy(&pProcRows[ProcRowNum*Size],&pProcRows[(ProcRowNum+1)*Size],pRow);
-        
+
     // Broadcast row to all processes
     MPI_Bcast(pRow, Size, MPI_INT, ProcRowRank, MPI_COMM_WORLD);
 }
@@ -155,17 +155,15 @@ void ParallelFloyd(int *pProcRows, int Size, int RowNum) {
     int t1, t2;
 
     for(int k = 0; k < Size; k++) {
-        // Distribute row among all processes
-        // Update adjacency matrix elements
+        RowDistribution(pProcRows, Size, RowNum, k, pRow); // додано
         for(int i = 0; i < RowNum; i++)
             for(int j = 0; j < Size; j++)
-                if( (pProcRows[i * Size + k] != -1) && (pRow [j] != -1)) {
+                if((pProcRows[i * Size + k] != -1) && (pRow[j] != -1)) {
                     t1 = pProcRows[i * Size + j];
                     t2 = pProcRows[i * Size + k] + pRow[j];
                     pProcRows[i * Size + j] = Min(t1, t2);
                 }
     }
-    
     delete []pRow;
 }
 
@@ -284,6 +282,8 @@ int main (int argc, char* argv[]) {
     int *pProcRows; // Process rows
     int RowNum; // Number of process rows
     int *pSerialMatrix = 0;
+    double start, finish;
+    double duration = 0.0;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &ProcNum);
@@ -294,22 +294,33 @@ int main (int argc, char* argv[]) {
 
     // Process initialization
     ProcessInitialization(pMatrix, pProcRows, Size, RowNum); 
-
-    if (ProcRank == 0) {
-        // Matrix copying
-        pSerialMatrix = new int[Size * Size];
-        CopyMatrix(pMatrix, Size, pSerialMatrix);
-    }
+    start = MPI_Wtime();
 
     // Distributing the initial data among processes
     DataDistribution(pMatrix, pProcRows, Size, RowNum);
 
+    // Testing the distribution
+    //TestDistribution(pMatrix, pProcRows, Size, RowNum);
+
     // Parallel Floyd algorithm
     ParallelFloyd(pProcRows, Size, RowNum);
-    ParallelPrintMatrix(pProcRows, Size, RowNum);
+    //ParallelPrintMatrix(pProcRows, Size, RowNum);
 
     // Process data collection
     ResultCollection(pMatrix, pProcRows, Size, RowNum);
+    //if(ProcRank == 0)
+         //PrintMatrix(pMatrix, Size, Size);
+    finish = MPI_Wtime();
+
+    if (ProcRank == 0) {
+        pSerialMatrix = new int[Size * Size];
+        CopyMatrix(pMatrix, Size, pSerialMatrix);
+    }
+
+    TestResult(pMatrix, pSerialMatrix, Size);
+    duration = finish - start;
+    if(ProcRank == 0)
+        printf("Time of execution: %f\n", duration);
     
     // Process termination
     ProcessTermination(pMatrix, pProcRows);
