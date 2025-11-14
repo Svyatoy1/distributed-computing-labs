@@ -53,19 +53,6 @@ int Min(int A, int B) {
     return Result;
 }
 
-// Function for the serial Floyd algorithm
-void SerialFloyd(int *pMatrix, int Size) {
-    int t1, t2;
-    for(int k = 0; k < Size; k++)
-        for(int i = 0; i < Size; i++)
-            for(int j = 0; j < Size; j++)
-                if((pMatrix[i * Size + k] != -1) && (pMatrix[k * Size + j] != -1)) {
-                    t1 = pMatrix[i * Size + j];
-                    t2 = pMatrix[i * Size + k] + pMatrix[k * Size + j];
-                    pMatrix[i * Size + j] = Min(t1, t2);
-            }
-}
-
 // Function for formatted matrix output
 void PrintMatrix(int *pMatrix, int RowCount, int ColCount) {
     for(int i = 0; i < RowCount; i++) {
@@ -76,21 +63,36 @@ void PrintMatrix(int *pMatrix, int RowCount, int ColCount) {
 }
 
 // Function for allocating the memory and setting the initial values
-void ProcessInitialization(int *&pMatrix, int& Size) {
-    do {
-        printf("Enter the number of vertices: ");
-        scanf("%d", &Size);
-        if(Size <= 0)
-            printf("The number of vertices should be greater than zero\n");
-    } while(Size <= 0);
+void ProcessInitialization(int *&pMatrix, int *&pProcRows, int& Size, int& RowNum) {
+    setvbuf(stdout, 0, _IONBF, 0);
+    if(ProcRank == 0) {
+        do {
+            printf("Enter the number of vertices: ");
+            scanf("%d", &Size);
+            if(Size < ProcNum)
+                printf("The number of vertices should be greater than the number of processes\n");
+            if(Size % ProcNum != 0)
+                printf("The number of vertices should be divisible by the number of processes\n");
+        } while((Size < ProcNum) || (Size % ProcNum != 0));
 
-    printf("Using graph with %d vertices\n", Size);
+        printf("Using the graph with %d vertices\n", Size);
+    }
+    // Broadcast the number of vertices
+    MPI_Bcast(&Size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    
+    // Number of rows for each process
+    RowNum = Size / ProcNum;
 
-    // Allocate memory for the adjacency matrix
-    pMatrix = new int[Size * Size];
+    // Allocate memory for the current process rows
+    pProcRows = new int[Size * RowNum];
+
+    if(ProcRank == 0) {
+        // Allocate memory for the adjacency matrix
+        pMatrix = new int[Size * Size];
+
     // Data initalization
-    //DummyDataInitialization(pMatrix, Size);
-    RandomDataInitialization(pMatrix, Size);
+    DummyDataInitialization(pMatrix, Size);
+    }
 }
 
 // Function for computational process termination
@@ -112,5 +114,9 @@ int main (int argc, char* argv[]) {
     if(ProcRank == 0)
         printf("Parallel Floyd algorithm \n");
 
+    // Process initialization
+    ProcessInitialization(pMatrix, pProcRows, Size, RowNum); 
+
     MPI_Finalize();
+    return 0;
 }
