@@ -79,7 +79,7 @@ void ProcessInitialization(int *&pMatrix, int *&pProcRows, int& Size, int& RowNu
     }
     // Broadcast the number of vertices
     MPI_Bcast(&Size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    
+
     // Number of rows for each process
     RowNum = Size / ProcNum;
 
@@ -96,8 +96,10 @@ void ProcessInitialization(int *&pMatrix, int *&pProcRows, int& Size, int& RowNu
 }
 
 // Function for computational process termination
-void ProcessTermination(int *pMatrix) {
-    delete []pMatrix;
+void ProcessTermination(int *pMatrix, int *pProcRows) {
+    if(ProcRank == 0)
+        delete []pMatrix;
+    delete []pProcRows;
 }
 
 
@@ -117,6 +119,8 @@ int main (int argc, char* argv[]) {
     // Process initialization
     ProcessInitialization(pMatrix, pProcRows, Size, RowNum); 
 
+    // Process termination
+    ProcessTermination(pMatrix, pProcRows);
+
     MPI_Finalize();
-    return 0;
 }
