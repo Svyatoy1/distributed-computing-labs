@@ -106,14 +106,18 @@ void RowDistribution(int *pProcRows, int Size, int RowNum, int k, int *pRow) {
 // Function for the parallel Floyd algorithm
 void ParallelFloyd(int *pProcRows, int Size, int RowNum) {
     int *pRow = new int[Size];
+    int t1, t2;
 
     for(int k = 0; k < Size; k++) {
         // Distribute row among all processes
-        RowDistribution(pProcRows, Size, RowNum, k, pRow);
-        if(ProcRank == 0) {
-            printf("Row %d after distribution:", k); 
-            PrintMatrix(pRow, Size, 1);
-        }
+        // Update adjacency matrix elements
+        for(int i = 0; i < RowNum; i++)
+            for(int j = 0; j < Size; j++)
+                if( (pProcRows[i * Size + k] != -1) && (pRow [j] != -1)) {
+                    t1 = pProcRows[i * Size + j];
+                    t2 = pProcRows[i * Size + k] + pRow[j];
+                    pProcRows[i * Size + j] = Min(t1, t2);
+                }
     }
     
     delete []pRow;
@@ -179,11 +183,10 @@ int main (int argc, char* argv[]) {
     // Distributing the initial data among processes
     DataDistribution(pMatrix, pProcRows, Size, RowNum);
 
-    // Testing the distribution
-    TestDistribution(pMatrix, pProcRows, Size, RowNum);
-
-    //ParallelFloyd(pProcRows, Size, RowNum);
-
+    // Parallel Floyd algorithm
+    ParallelFloyd(pProcRows, Size, RowNum);
+    ParallelPrintMatrix(pProcRows, Size, RowNum);
+    
     // Process termination
     ProcessTermination(pMatrix, pProcRows);
 
