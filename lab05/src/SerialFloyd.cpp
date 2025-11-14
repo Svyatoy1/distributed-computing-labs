@@ -8,6 +8,8 @@ using namespace std;
 
 int *pMatrix; // Adjacency matrix
 int Size; // Size of adjacency matrix
+const double InfinitiesPercent = 50.0;
+const double RandomDataMultiplier = 10;
 
 // Function for simple setting the initial data
 void DummyDataInitialization(int *pMatrix, int Size) {
@@ -22,6 +24,21 @@ void DummyDataInitialization(int *pMatrix, int Size) {
                 pMatrix[i * Size + j] = -1;
                 pMatrix[j * Size + i] = pMatrix[i * Size + j];
         }
+}
+
+// Function for initializing the data by the random generator
+void RandomDataInitialization(int *pMatrix, int Size) {
+    srand( (unsigned)time(0) );
+    for(int i = 0; i < Size; i++)
+        for(int j = 0; j < Size; j++)
+            if(i != j) {
+                if((rand() % 100) < InfinitiesPercent)
+                    pMatrix[i * Size + j] = -1;
+                else
+                    pMatrix[i * Size + j] = rand() + 1;
+            }
+            else
+                pMatrix[i * Size + j] = 0;
 }
 
 int Min(int A, int B) {
@@ -68,7 +85,8 @@ void ProcessInitialization(int *&pMatrix, int& Size) {
     // Allocate memory for the adjacency matrix
     pMatrix = new int[Size * Size];
     // Data initalization
-    DummyDataInitialization(pMatrix, Size);
+    //DummyDataInitialization(pMatrix, Size);
+    RandomDataInitialization(pMatrix, Size);
 }
 
 // Function for computational process termination
@@ -77,19 +95,29 @@ void ProcessTermination(int *pMatrix) {
 }
 
 int main () {
+    int *pMatrix = 0; // Adjacency matrix
+    int Size = 0; // Size of adjacency matrix
+    time_t start, finish;
+    double duration = 0.0;
+
     printf("Serial Floyd algorithm\n");
 
     // Process initialization
     ProcessInitialization(pMatrix, Size);
 
-    printf("The matrix before Floyd algorithm\n");
-    PrintMatrix(pMatrix, Size, Size);
+    //printf("The matrix before Floyd algorithm\n");
+    //PrintMatrix(pMatrix, Size, Size);
 
+    start = clock();
     // Serial Floyd algorithm
     SerialFloyd(pMatrix, Size);
-    
-    printf("The matrix after Floyd algorithm\n");
-    PrintMatrix(pMatrix, Size, Size);
+    finish = clock();
+
+    //printf("The matrix after Floyd algorithm\n");
+    //PrintMatrix(pMatrix, Size, Size);
+
+    duration = (finish - start) / double(CLOCKS_PER_SEC);
+    printf("Time of execution: %f\n", duration);
 
     // Process termination
     ProcessTermination(pMatrix);
