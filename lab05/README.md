@@ -14,3 +14,7 @@
 | 5     | 800                              | 7.280032             |
 | 6     | 900                              | 10.534795            |
 | 7     | 1,000                            | 12.936103            |
+
+# EXERCISE 4
+Запускаємо програму в наступній послідовності:
+`mpic++ src/ParallelFloyd.cpp -o ParallelFloyd`, `mpirun -np 2 ./ParallelFloyd`, `mpirun --oversubscribe -np 8 ./ParallelFloyd`
