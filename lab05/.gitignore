@@ -1,0 +1,34 @@
+# Файли для запуску програм
+SerialFloyd
+*.out
+*.exe
+
+SerialFloydTest
+*.out
+*.exe
+
+ParallelFloyd
+*.out
+*.exe
+
+ParallelFloydTest
+*.out
+*.exe
+
+# Об'єктні файли
+*.o
+
+# Лог-файли
+*.log
+*.tmp
+
+# Папки VSCode
+.vscode/
+.idea/
+
+# Папки для збірки
+build/
+bin/
+
+# Результати виконання
+lab05/results/

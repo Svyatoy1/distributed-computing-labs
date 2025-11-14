@@ -78,8 +78,8 @@ int main() {
     // Process initialization
     ProcessInitialization(pData, DataSize);
 
-    //printf("Data before sorting\n");
-    //PrintData(pData, DataSize);
+    printf("Data before sorting\n");
+    PrintData(pData, DataSize);
 
     // Serial bubble sort
     start = clock();
@@ -87,8 +87,8 @@ int main() {
     SerialStdSort(pData, DataSize);
     finish = clock();
 
-    //printf("Data after sorting\n");
-    //PrintData(pData, DataSize);
+    printf("Data after sorting\n");
+    PrintData(pData, DataSize);
 
     duration = (finish - start) / double(CLOCKS_PER_SEC);
     printf("Time of execution: %f\n", duration);
