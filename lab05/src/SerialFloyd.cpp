@@ -50,6 +50,11 @@ void ProcessInitialization(int *&pMatrix, int& Size) {
     DummyDataInitialization(pMatrix, Size);
 }
 
+// Function for computational process termination
+void ProcessTermination(int *pMatrix) {
+    delete []pMatrix;
+}
+
 int main () {
     printf("Serial Floyd algorithm\n");
 
@@ -57,6 +62,9 @@ int main () {
     ProcessInitialization(pMatrix, Size);
     printf("The matrix before Floyd algorithm\n");
     PrintMatrix(pMatrix, Size, Size);
-    
+
+    // Process termination
+    ProcessTermination(pMatrix);
+
     return 0;
 }
