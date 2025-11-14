@@ -62,6 +62,34 @@ void PrintMatrix(int *pMatrix, int RowCount, int ColCount) {
     }
 }
 
+// Function for formatted output of all stripes
+void ParallelPrintMatrix(int *pProcRows, int Size, int RowNum) {
+    for(int i = 0; i < ProcNum; i++) {
+        if (ProcRank == i) {
+            printf("ProcRank = %d\n", ProcRank);
+            printf("Proc rows:\n");
+            PrintMatrix(pProcRows, RowNum, Size);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+}
+
+// Function for the data distribution among the processes
+void DataDistribution(int *pMatrix, int *pProcRows, int Size, int RowNum) {
+    MPI_Scatter(pMatrix, RowNum * Size, MPI_INT, pProcRows, RowNum * Size, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
+// Function for testing the data distribution
+void TestDistribution(int *pMatrix, int *pProcRows, int Size, int RowNum) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (ProcRank == 0) {
+        printf("Initial adjacency matrix:\n");
+        PrintMatrix(pMatrix, Size, Size);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    ParallelPrintMatrix(pProcRows, Size, RowNum);
+}
+
 // Function for allocating the memory and setting the initial values
 void ProcessInitialization(int *&pMatrix, int *&pProcRows, int& Size, int& RowNum) {
     setvbuf(stdout, 0, _IONBF, 0);
@@ -118,6 +146,12 @@ int main (int argc, char* argv[]) {
 
     // Process initialization
     ProcessInitialization(pMatrix, pProcRows, Size, RowNum); 
+
+    // Distributing the initial data among processes
+    DataDistribution(pMatrix, pProcRows, Size, RowNum);
+
+    // Testing the distribution
+    TestDistribution(pMatrix, pProcRows, Size, RowNum);
 
     // Process termination
     ProcessTermination(pMatrix, pProcRows);
