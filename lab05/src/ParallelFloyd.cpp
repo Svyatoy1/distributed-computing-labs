@@ -15,6 +15,11 @@ int Size; // Size of adjacency matrix
 const double InfinitiesPercent = 50.0;
 const double RandomDataMultiplier = 10;
 
+// Function for comparing the matrices
+bool CompareMatrices(int *pMatrix1, int *pMatrix2, int Size) {
+    return equal(pMatrix1, pMatrix1 + Size * Size, pMatrix2);
+}
+
 // Function for simple setting the initial data
 void DummyDataInitialization(int *pMatrix, int Size) {
     for(int i = 0; i < Size; i++)
@@ -123,6 +128,19 @@ void ParallelFloyd(int *pProcRows, int Size, int RowNum) {
     delete []pRow;
 }
 
+// Function for the serial Floyd algorithm
+void SerialFloyd(int *pMatrix, int Size) {
+    int t1, t2;
+    for(int k = 0; k < Size; k++)
+        for(int i = 0; i < Size; i++)
+            for(int j = 0; j < Size; j++)
+                if((pMatrix[i * Size + k] != -1) && (pMatrix[k * Size + j] != -1)) {
+                    t1 = pMatrix[i * Size + j];
+                    t2 = pMatrix[i * Size + k] + pMatrix[k * Size + j];
+                    pMatrix[i * Size + j] = Min(t1, t2);
+            }
+}
+
 // Function for allocating the memory and setting the initial values
 void ProcessInitialization(int *&pMatrix, int *&pProcRows, int& Size, int& RowNum) {
     setvbuf(stdout, 0, _IONBF, 0);
@@ -152,7 +170,32 @@ void ProcessInitialization(int *&pMatrix, int *&pProcRows, int& Size, int& RowNu
         pMatrix = new int[Size * Size];
 
     // Data initalization
-    DummyDataInitialization(pMatrix, Size);
+    //DummyDataInitialization(pMatrix, Size);
+    RandomDataInitialization(pMatrix, Size);
+    }
+}
+
+// Function for process result collection
+void ResultCollection(int *pMatrix, int *pProcRows, int Size, int RowNum) {
+    MPI_Gather(pProcRows, RowNum * Size, MPI_INT, pMatrix, RowNum * Size, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
+// Function for copying the matrix
+void CopyMatrix(int *pMatrix, int Size, int *pMatrixCopy) {
+    copy(pMatrix, pMatrix + Size * Size, pMatrixCopy);
+}
+
+// Function for testing the result of parallel Floyd algorithm
+void TestResult(int *pMatrix, int *pSerialMatrix, int Size) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(ProcRank == 0) {
+        SerialFloyd(pSerialMatrix, Size);
+        if(!CompareMatrices (pMatrix, pSerialMatrix, Size)) {
+            printf("The results of serial and parallel algorithms are NOT identical. Check your code\n");
+        }
+        else {
+            printf("The results of serial and parallel algorithms are identical\n");
+        }
     }
 }
 
@@ -169,6 +212,7 @@ int main (int argc, char* argv[]) {
     int Size; // Size of adjacency matrix
     int *pProcRows; // Process rows
     int RowNum; // Number of process rows
+    int *pSerialMatrix = 0;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &ProcNum);
@@ -180,15 +224,26 @@ int main (int argc, char* argv[]) {
     // Process initialization
     ProcessInitialization(pMatrix, pProcRows, Size, RowNum); 
 
+    if (ProcRank == 0) {
+        // Matrix copying
+        pSerialMatrix = new int[Size * Size];
+        CopyMatrix(pMatrix, Size, pSerialMatrix);
+    }
+
     // Distributing the initial data among processes
     DataDistribution(pMatrix, pProcRows, Size, RowNum);
 
     // Parallel Floyd algorithm
     ParallelFloyd(pProcRows, Size, RowNum);
     ParallelPrintMatrix(pProcRows, Size, RowNum);
+
+    // Process data collection
+    ResultCollection(pMatrix, pProcRows, Size, RowNum);
     
     // Process termination
     ProcessTermination(pMatrix, pProcRows);
+    if (ProcRank == 0)
+        delete []pSerialMatrix;
 
     MPI_Finalize();
 }
