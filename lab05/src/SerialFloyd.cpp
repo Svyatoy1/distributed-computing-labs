@@ -9,7 +9,54 @@ using namespace std;
 int *pMatrix; // Adjacency matrix
 int Size; // Size of adjacency matrix
 
+// Function for simple setting the initial data
+void DummyDataInitialization(int *pMatrix, int Size) {
+    for(int i = 0; i < Size; i++)
+        for(int j = i; j < Size; j++) {
+            if(i == j) 
+                pMatrix[i * Size + j] = 0;
+            else
+                if(i == 0) 
+                    pMatrix[i * Size + j] = j;
+            else 
+                pMatrix[i * Size + j] = -1;
+                pMatrix[j * Size + i] = pMatrix[i * Size + j];
+        }
+}
+
+// Function for formatted matrix output
+void PrintMatrix(int *pMatrix, int RowCount, int ColCount) {
+    for(int i = 0; i < RowCount; i++) {
+        for(int j = 0; j < ColCount; j++)
+            printf("%7d", pMatrix[i * ColCount + j]);
+        printf("\n");
+    }
+}
+
+// Function for allocating the memory and setting the initial values
+void ProcessInitialization(int *&pMatrix, int& Size) {
+    do {
+        printf("Enter the number of vertices: ");
+        scanf("%d", &Size);
+        if(Size <= 0)
+            printf("The number of vertices should be greater than zero\n");
+    } while(Size <= 0);
+
+    printf("Using graph with %d vertices\n", Size);
+
+    // Allocate memory for the adjacency matrix
+    pMatrix = new int[Size * Size];
+    // Data initalization
+    DummyDataInitialization(pMatrix, Size);
+}
+
 int main () {
     printf("Serial Floyd algorithm\n");
+
+    // Process initialization
+    ProcessInitialization(pMatrix, Size);
+    printf("The matrix before Floyd algorithm\n");
+    PrintMatrix(pMatrix, Size, Size);
+    
     return 0;
 }
