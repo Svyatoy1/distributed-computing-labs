@@ -90,6 +90,35 @@ void TestDistribution(int *pMatrix, int *pProcRows, int Size, int RowNum) {
     ParallelPrintMatrix(pProcRows, Size, RowNum);
 }
 
+// Function for row broadcasting among all processes
+void RowDistribution(int *pProcRows, int Size, int RowNum, int k, int *pRow) {
+    int ProcRowRank = k / RowNum; // Process rank with the row k
+    int ProcRowNum = k - ProcRowRank * RowNum; // Process row number
+
+    if(ProcRowRank == ProcRank)
+        // Copy the row to pRow array
+        copy(&pProcRows[ProcRowNum*Size],&pProcRows[(ProcRowNum+1)*Size],pRow);
+
+    // Broadcast row to all processes
+    MPI_Bcast(pRow, Size, MPI_INT, ProcRowRank, MPI_COMM_WORLD);
+}
+
+// Function for the parallel Floyd algorithm
+void ParallelFloyd(int *pProcRows, int Size, int RowNum) {
+    int *pRow = new int[Size];
+
+    for(int k = 0; k < Size; k++) {
+        // Distribute row among all processes
+        RowDistribution(pProcRows, Size, RowNum, k, pRow);
+        if(ProcRank == 0) {
+            printf("Row %d after distribution:", k); 
+            PrintMatrix(pRow, Size, 1);
+        }
+    }
+    
+    delete []pRow;
+}
+
 // Function for allocating the memory and setting the initial values
 void ProcessInitialization(int *&pMatrix, int *&pProcRows, int& Size, int& RowNum) {
     setvbuf(stdout, 0, _IONBF, 0);
@@ -152,6 +181,8 @@ int main (int argc, char* argv[]) {
 
     // Testing the distribution
     TestDistribution(pMatrix, pProcRows, Size, RowNum);
+
+    //ParallelFloyd(pProcRows, Size, RowNum);
 
     // Process termination
     ProcessTermination(pMatrix, pProcRows);
