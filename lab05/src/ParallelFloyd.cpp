@@ -81,7 +81,33 @@ void ParallelPrintMatrix(int *pProcRows, int Size, int RowNum) {
 
 // Function for the data distribution among the processes
 void DataDistribution(int *pMatrix, int *pProcRows, int Size, int RowNum) {
-    MPI_Scatter(pMatrix, RowNum * Size, MPI_INT, pProcRows, RowNum * Size, MPI_INT, 0, MPI_COMM_WORLD);
+    int *pSendNum; // Number of elements sent to the process
+    int *pSendInd; // Index of the first data element sent to the process
+    int RestRows = Size; // Number of rows, that haven’t been distributed yet
+
+    // Allocate memory for temporary objects
+    pSendInd = new int[ProcNum];
+    pSendNum = new int[ProcNum];
+
+    // Define the disposition of the matrix rows for current process
+    RowNum = Size / ProcNum;
+    pSendNum[0] = RowNum * Size;
+    pSendInd[0] = 0;
+
+    for (int i = 1; i < ProcNum; i++) {
+        RestRows -= RowNum;
+        RowNum = RestRows / (ProcNum - i);
+        pSendNum[i] = RowNum * Size;
+        pSendInd[i] = pSendInd[i - 1] + pSendNum[i - 1];
+    }
+
+    // Scatter the rows
+    MPI_Scatterv(pMatrix, pSendNum, pSendInd, MPI_INT,
+    pProcRows, pSendNum[ProcRank], MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Free allocated memory
+    delete []pSendNum;
+    delete []pSendInd;
 }
 
 // Function for testing the data distribution
@@ -97,13 +123,28 @@ void TestDistribution(int *pMatrix, int *pProcRows, int Size, int RowNum) {
 
 // Function for row broadcasting among all processes
 void RowDistribution(int *pProcRows, int Size, int RowNum, int k, int *pRow) {
-    int ProcRowRank = k / RowNum; // Process rank with the row k
-    int ProcRowNum = k - ProcRowRank * RowNum; // Process row number
+    int ProcRowRank; // Process rank with the row k
+    int ProcRowNum; // Process row number
+
+    // Finding the process rank with the row k
+    int RestRows = Size;
+    int Ind = 0;
+    int Num = Size / ProcNum;
+
+    for(ProcRowRank = 1; ProcRowRank < ProcNum + 1; ProcRowRank ++) {
+        if(k < Ind + Num ) break;
+        RestRows -= Num;
+        Ind += Num;
+        Num = RestRows / (ProcNum - ProcRowRank);
+    }
+
+    ProcRowRank = ProcRowRank - 1;
+    ProcRowNum = k - Ind;
 
     if(ProcRowRank == ProcRank)
         // Copy the row to pRow array
         copy(&pProcRows[ProcRowNum*Size],&pProcRows[(ProcRowNum+1)*Size],pRow);
-
+        
     // Broadcast row to all processes
     MPI_Bcast(pRow, Size, MPI_INT, ProcRowRank, MPI_COMM_WORLD);
 }
@@ -156,11 +197,15 @@ void ProcessInitialization(int *&pMatrix, int *&pProcRows, int& Size, int& RowNu
 
         printf("Using the graph with %d vertices\n", Size);
     }
+
     // Broadcast the number of vertices
     MPI_Bcast(&Size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Number of rows for each process
-    RowNum = Size / ProcNum;
+    int RestRows = Size;
+    for(int i = 0; i < ProcRank; i++)
+    RestRows = RestRows - RestRows / (ProcNum - i);
+    RowNum = RestRows / (ProcNum - ProcRank);
 
     // Allocate memory for the current process rows
     pProcRows = new int[Size * RowNum];
@@ -177,7 +222,33 @@ void ProcessInitialization(int *&pMatrix, int *&pProcRows, int& Size, int& RowNu
 
 // Function for process result collection
 void ResultCollection(int *pMatrix, int *pProcRows, int Size, int RowNum) {
-    MPI_Gather(pProcRows, RowNum * Size, MPI_INT, pMatrix, RowNum * Size, MPI_INT, 0, MPI_COMM_WORLD);
+    int *pReceiveNum; // Number of elements, that current process sends
+    int *pReceiveInd; // Offset for storing the data from current process
+    int RestRows = Size; // Number of rows, that haven’t been gathered yet
+
+    // Allocate memory for temporary objects
+    pReceiveNum = new int [ProcNum];
+    pReceiveInd = new int [ProcNum];
+
+    // Determine the disposition of the result data block of current process
+    RowNum = Size / ProcNum;
+    pReceiveInd[0] = 0;
+    pReceiveNum[0] = RowNum * Size;
+
+    for(int i = 1; i < ProcNum; i++) {
+        RestRows -= RowNum;
+        RowNum = RestRows / (ProcNum - i);
+        pReceiveNum[i] = RowNum * Size;
+        pReceiveInd[i] = pReceiveInd[i - 1] + pReceiveNum[i - 1];
+    }
+
+    // Gather the whole matrix on the process 0
+    MPI_Gatherv(pProcRows, pReceiveNum[ProcRank], MPI_INT,
+    pMatrix, pReceiveNum, pReceiveInd, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Free allocated memory
+    delete []pReceiveNum;
+    delete []pReceiveInd;
 }
 
 // Function for copying the matrix
