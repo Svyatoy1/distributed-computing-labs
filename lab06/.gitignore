@@ -1,0 +1,26 @@
+# Файли для запуску програм
+SerialGaussSeidel
+*.out
+*.exe
+
+ParallelGaussSeidel
+*.out
+*.exe
+
+# Об'єктні файли
+*.o
+
+# Лог-файли
+*.log
+*.tmp
+
+# Папки VSCode
+.vscode/
+.idea/
+
+# Папки для збірки
+build/
+bin/
+
+# Результати виконання
+lab06/results/
