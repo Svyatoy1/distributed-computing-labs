@@ -17,7 +17,7 @@
 
 # EXERCISE 4
 Запускаємо програму в наступній послідовності:
-`mpic++ src/ParallelFloyd.cpp -o ParallelFloyd`, `mpirun -np 2 ./ParallelFloyd`, `mpirun --oversubscribe -np 8 ./ParallelFloyd`
+`mpic++ src/ParallelFloyd.cpp -o ParallelFloyd`, `mpirun -np 4 ./ParallelFloyd`, `mpirun --oversubscribe -np 8 ./ParallelFloyd`
 
 | Test# | Number of vertices | Serial Floyd (sec) | 2 processes | 4 processes | 8 processes |
 |:-----:|-------------------:|-------------------:|------------:|------------:|------------:|
